@@ -1,5 +1,5 @@
 [package]
-name = "KuLaPad"
+name = "KuLaPad-token-factory"
 version = "1.0.0"
 edition = "2022"
 
