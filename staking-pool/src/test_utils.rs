@@ -123,5 +123,6 @@ pub fn testing_env_with_promise_results(context: VMContext, promise_result: Prom
         vec![promise_result],
         storage,
         Default::default(),
+        None
     )));
 }

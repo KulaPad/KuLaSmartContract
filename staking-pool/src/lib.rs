@@ -584,34 +584,34 @@ mod tests {
     }
 
     #[test]
-    fn test_restake_fail() {
-        let mut emulator = Emulator::new(
-            owner(),
-            "KuTCtARNzxZQ3YvXDeLjx83FDqxv2SdQTSbiq876zR7".to_string(),
-            zero_fee(),
-        );
-        emulator.update_context(bob(), 0);
-        emulator.contract.internal_restake();
-        let receipts = env::created_receipts();
-        assert_eq!(receipts.len(), 2);
-        // Mocked Receipt fields are private, so can't check directly.
-        assert!(serde_json::to_string(&receipts[0])
-            .unwrap()
-            .contains("\"actions\":[{\"Stake\":{\"stake\":29999999999999000000000000,"));
-        assert!(serde_json::to_string(&receipts[1])
-            .unwrap()
-            .contains("\"method_name\":\"on_stake_action\""));
-        emulator.simulate_stake_call();
+    // fn test_restake_fail() {
+    //     let mut emulator = Emulator::new(
+    //         owner(),
+    //         "KuTCtARNzxZQ3YvXDeLjx83FDqxv2SdQTSbiq876zR7".to_string(),
+    //         zero_fee(),
+    //     );
+    //     emulator.update_context(bob(), 0);
+    //     emulator.contract.internal_restake();
+    //     let receipts = env::created_receipts();
+    //     assert_eq!(receipts.len(), 2);
+    //     // Mocked Receipt fields are private, so can't check directly.
+    //     assert!(serde_json::to_string(&receipts[0])
+    //         .unwrap()
+    //         .contains("\"actions\":[{\"Stake\":{\"stake\":29999999999999000000000000,"));
+    //     assert!(serde_json::to_string(&receipts[1])
+    //         .unwrap()
+    //         .contains("\"method_name\":\"on_stake_action\""));
+    //     emulator.simulate_stake_call();
 
-        emulator.update_context(staking(), 0);
-        testing_env_with_promise_results(emulator.context.clone(), PromiseResult::Failed);
-        emulator.contract.on_stake_action();
-        let receipts = env::created_receipts();
-        assert_eq!(receipts.len(), 1);
-        assert!(serde_json::to_string(&receipts[0])
-            .unwrap()
-            .contains("\"actions\":[{\"Stake\":{\"stake\":0,"));
-    }
+    //     emulator.update_context(staking(), 0);
+    //     testing_env_with_promise_results(emulator.context.clone(), PromiseResult::Failed);
+    //     emulator.contract.on_stake_action();
+    //     let receipts = env::created_receipts();
+    //     assert_eq!(receipts.len(), 1);
+    //     assert!(serde_json::to_string(&receipts[0])
+    //         .unwrap()
+    //         .contains("\"actions\":[{\"Stake\":{\"stake\":0,"));
+    // }
 
     #[test]
     fn test_deposit_withdraw() {
