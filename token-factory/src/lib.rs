@@ -82,6 +82,25 @@ impl Contract {
     fn on_tokens_burned(&mut self, account_id: AccountId, amount: Balance) {
         log!("Account @{} burned {}", account_id, amount);
     }
+
+    // Claim testnet tokens
+    pub fn claim_testnet_token(&mut self) {
+        let sender_id = env::current_account_id();
+        let receiver_id = env::signer_account_id();
+        assert_ne!(
+            sender_id, receiver_id,
+            "Sender and receiver should be different"
+        );
+
+        // Check if receiver end with ".testnet"
+        if !receiver_id.ends_with(".testnet") {
+            env::panic(b"Receiver should be testnet account");
+        }
+
+        let transfer_amount: Balance = 20000000000;
+        self.token
+            .internal_transfer(&sender_id, &receiver_id, transfer_amount.into(), None);
+    }
 }
 
 near_contract_standards::impl_fungible_token_core!(Contract, token, on_tokens_burned);
