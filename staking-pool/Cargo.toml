@@ -1,33 +1,21 @@
 [package]
-name = "KuLaPad-staking"
-version = "0.0.1"
-authors = ["hoangtheanhhp <hoangtheanhhp@gmail.com>"]
+name = "staking-contract"
+version = "0.1.0"
 edition = "2021"
-publish = false
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = "3.1.0"
 
 [profile.release]
 codegen-units = 1
 # Tell `rustc` to optimize for small code size.
-opt-level = "s"
+opt-level = "z"
 lto = true
 debug = false
 panic = "abort"
+# Opt into extra safety checks on arithmetic operations https://stackoverflow.com/a/64136471/249801
 overflow-checks = true
-
-[dependencies]
-near-sdk = "3.1.0"
-near-contract-standards = "3.2.0"
-serde = { version = "1.0", features = ["derive"] }
-uint = { version = "0.8.3", default-features = false }
-
-[dev-dependencies]
-lazy_static = "1.4.0"
-quickcheck = "0.9"
-quickcheck_macros = "0.9"
-log = "0.4"
-env_logger = { version = "0.7.1", default-features = false }
-near-crypto = { git = "https://github.com/near/nearcore.git" }
-near-primitives = { git = "https://github.com/near/nearcore.git" }
