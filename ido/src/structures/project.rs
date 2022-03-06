@@ -3,13 +3,16 @@ use crate::*;
 use crate::structures::account::*;
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub enum DistributionType {
+pub enum SaleType {
     FullUnlocked,
     Vested
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub enum ProjectStatus {
+    New,
+    Approved,
+    Rejected,
     Preparation,
     Whitelist,
     Sales,
@@ -18,24 +21,34 @@ pub enum ProjectStatus {
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct ProjectInfo {
+    /// yourproject.near
     pub owner_id: AccountId,
+    /// YOUR
     pub name: String,
     pub logo_url: String,
     pub description: String,
     pub introduction: String,
+    pub categories: Vec<String>,
     pub whitelist_date: Timestamp,
     pub sale_start_date: Timestamp,
     pub sale_end_date: Timestamp,
-    pub token_symbol: String,
+    /// your.near
     pub token_contract_id: AccountId,
-    pub fund_symbol: String,
-    pub fund_contract_id: Option<AccountId>,
+    /// YOUR
+    pub token_symbol: String,
+    /// 30.000.000
     pub token_raised_amount: Balance,
-    pub fund_raised_amount: Balance,
-    pub token_price: Balance,
-    pub distribution_type: DistributionType,
+    /// 0.01 (NEAR)
+    pub token_sale_rate: Balance,
+    /// None
+    pub fund_contract_id: Option<AccountId>,
+    /// NEAR
+    pub fund_symbol: String,
+
+    pub sale_type: SaleType,
     pub configuration: ProjectConfiguration,
     pub current_ticket_id: TicketId,
+    pub status: ProjectStatus,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
@@ -52,18 +65,22 @@ pub struct JsonProject {
     pub logo_url: String,
     pub description: String,
     pub introduction: String,
+    pub categories: Vec<String>,
     pub whitelist_date: Timestamp,
     pub sale_start_date: Timestamp,
     pub sale_end_date: Timestamp,
     pub token_symbol: String,
-    pub fund_symbol: String,
-    pub fund_contract_id: Option<AccountId>,
     pub token_raised_amount: Balance,
-    pub fund_raised_amount: Balance,
-    pub token_price: Balance,
-    pub distribution_type: DistributionType,
-    pub configuration: ProjectConfiguration,
+    pub token_sale_rate: Balance,
+    pub fund_symbol: String,
+    pub sale_type: SaleType,
+    pub hard_cap: Balance,
+    pub status: ProjectStatus,
     pub whitelist_accounts: u16,
+    pub configuration: ProjectConfiguration,
+}
+impl ProjectInfo {
+
 }
 
 #[near_bindgen]
@@ -86,16 +103,17 @@ impl IDOContract{
                 logo_url: project.logo_url,
                 description: project.description,
                 introduction: project.introduction,
+                categories: project.categories,
                 whitelist_date: project.whitelist_date,
                 sale_start_date: project.sale_start_date,
                 sale_end_date: project.sale_end_date,
                 token_symbol: project.token_symbol,
                 fund_symbol: project.fund_symbol,
-                fund_contract_id: project.fund_contract_id,
                 token_raised_amount: project.token_raised_amount,
-                fund_raised_amount: project.fund_raised_amount,
-                token_price: project.token_price,
-                distribution_type: project.distribution_type,
+                token_sale_rate: project.token_sale_rate,
+                hard_cap: project.token_raised_amount * project.token_sale_rate,
+                sale_type: project.sale_type,
+                status: project.status,
                 configuration: project.configuration,
                 whitelist_accounts: 0,
             })
@@ -104,7 +122,7 @@ impl IDOContract{
         }
     }
 
-    pub fn get_projects(&self, from_index: Option<u64>, limit: Option<u64>) -> Vec<JsonProject>{
+    pub fn get_projects(&self, status: Option<ProjectStatus>, from_index: Option<u64>, limit: Option<u64>) -> Vec<JsonProject>{
         // TODO: Do paging
 
         self.projects

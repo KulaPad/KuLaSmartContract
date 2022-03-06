@@ -15,7 +15,7 @@ pub struct AccountTokenSales {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct AccountInfoJson {
+pub struct JsonAccountInfo {
     pub staking_tickets: u16,
     pub social_tickets: u16,
     pub referral_tickets: u16,

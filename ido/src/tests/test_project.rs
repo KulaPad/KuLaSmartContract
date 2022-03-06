@@ -9,6 +9,7 @@ fn get_project_1() -> ProjectInfo {
         logo_url: "https://your.com/logo.url".to_string(),
         description: "The description of project".to_string(),
         introduction: "The introduction about project".to_string(),
+        categories: vec!["NFT".to_string(), "Metaverse".to_string(), "Datamining".to_string()],
         whitelist_date: 1,
         sale_start_date: 3,
         sale_end_date: 5,
@@ -17,9 +18,9 @@ fn get_project_1() -> ProjectInfo {
         fund_symbol: "NEAR".to_string(),
         fund_contract_id: None,
         token_raised_amount: 40000,
-        fund_raised_amount: 400000,
-        token_price: 10,
-        distribution_type: DistributionType::FullUnlocked,
+        token_sale_rate: 10,
+        sale_type: SaleType::FullUnlocked,
+        status: ProjectStatus::New,
         configuration: ProjectConfiguration {
             max_staking_tickets_per_user: 300,
             max_win_tickets_per_user: 10,
@@ -37,7 +38,7 @@ fn test_create_and_get_project() {
 
     emulator.contract.create_project(project);
 
-    let projects = emulator.contract.get_projects(None, None); 
+    let projects = emulator.contract.get_projects(None, None, None); 
 
     assert_eq!(1, projects.len(), "The number of projects in the contract is not correct!");
 
