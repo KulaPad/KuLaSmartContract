@@ -1,5 +1,16 @@
 use crate::*;
 
+
+#[derive(BorshSerialize, BorshDeserialize, )]
+pub struct Ticket {
+    pub id: TicketId,
+    pub account_id: AccountId,
+    pub ticket_type: TicketType,
+    pub rank: TicketRank,
+}
+
+pub type TicketId = u64;
+
 #[derive(BorshSerialize, BorshDeserialize)]
 pub enum TicketType {
     Staking,
@@ -7,8 +18,12 @@ pub enum TicketType {
     Referral,
 }
 
-#[derive(BorshSerialize, BorshDeserialize,)]
-pub struct Ticket {
-    pub ticket_type: TicketType,
-    pub account_id: AccountId,
+/// There 2 type of ticket:
+/// - VIP ticket: For staking Tier 4: This ticket can always join the campaign sale event
+/// - normal ticket: This ticket need to pass lucky round to be chosen
+/// Only the chosen normal ticket can join the sale round
+#[derive(BorshSerialize, BorshDeserialize)]
+pub enum TicketRank {
+    Normal,
+    Vip,
 }
