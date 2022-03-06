@@ -1,52 +1,78 @@
 
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{init, env, near_bindgen,PanicOnDefault};
+use near_sdk::{init, env, near_bindgen, PanicOnDefault, Timestamp, Balance, AccountId, CryptoHash};
 
-use near_sdk::collections::{UnorderedMap, LazyOption};
-use near_sdk::{AccountId, collections::LookupMap};
+use near_sdk::collections::{UnorderedMap, LazyOption, LookupMap};
 
+pub type ProjectId = u64;
+pub type TicketId = u64;
+
+use crate::structures::project::*;
+use crate::structures::account::*;
+use crate::structures::ticket::*;
+use crate::utils::*;
+
+mod structures;
+mod utils;
+mod tests;
+
+#[derive(BorshSerialize, BorshDeserialize)]
+pub enum StorageKey {
+    ProjectKey,
+    ProjectAccountTicketKey,
+    ProjectAccountTicketInnerKey {
+        account_id_hash: CryptoHash
+    },
+    ProjectTokenSaleKey,
+    ProjectTokenSaleInnerKey {
+        account_id_hash: CryptoHash
+    },
+    ProjectTicketKey,
+    ProjectTicketInnerKey {
+
+    },
+    AccountProjectKey,
+}
 
 #[near_bindgen]
 #[derive(PanicOnDefault, BorshDeserialize, BorshSerialize)]
-pub struct Contract{
+pub struct IDOContract{
+    /// The owner of this contract.
+    pub owner_id: AccountId,
+
+    /// Stores the list of projects that belongs to this IDO contract.
+    pub projects: UnorderedMap<ProjectId, ProjectInfo>,
+
+    /// Stores the list of tickets that belongs to the specific account for each project.
+    pub project_account_tickets: LookupMap<ProjectId, UnorderedMap<AccountId, AccountTickets>>,
+
+    /// Stores the list of token sales of an account in each project.
+    pub project_account_token_sales: LookupMap<ProjectId, UnorderedMap<AccountId, AccountTokenSales>>,
+
+    /// Stores the list of tickets that belongs to each project.
+    /// Ex: Project 1: Tickets [{Id: 1, Type: Staking, Account Id: account1.testnet }, {Id: 2, Type: Social, Account Id: account2.testnet }, ...]
+    pub project_tickets: LookupMap<ProjectId, LookupMap<TicketId, Ticket>>,
+
+    /// The list of projects that that account has registered whitelist.
+    pub account_projects: LookupMap<AccountId, Vec<ProjectId>>,
 }
+
 #[near_bindgen]
-impl Contract{
-}
-
-
-impl Contract{
-}
-
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use near_sdk::MockedBlockchain;
-    use near_sdk::{testing_env, VMContext, AccountId};
-    // part of writing unit tests is setting up a mock context
-    // in this example, this is only needed for env::log in the contract
-    // this is also a useful list to peek at when wondering what's available in env::*
-    fn get_context(input: Vec<u8>, is_view: bool, predecessor: AccountId) -> VMContext {
-        VMContext {
-            current_account_id: "alice.testnet".to_string(),
-            signer_account_id: "robert.testnet".to_string(),
-            signer_account_pk: vec![0, 1, 2],
-            predecessor_account_id: predecessor,
-            input,
-            block_index: 0,
-            block_timestamp: 0,
-            account_balance: 0,
-            account_locked_balance: 0,
-            storage_usage: 0,
-            attached_deposit: 0,
-            prepaid_gas: 10u64.pow(18),
-            random_seed: vec![0, 1, 2],
-            is_view,
-            output_data_receivers: vec![],
-            epoch_height: 19,
+impl IDOContract{
+    #[init]
+    pub fn new(owner_id: AccountId) -> Self {
+        Self {
+            owner_id,
+            projects: UnorderedMap::new(get_storage_key(StorageKey::ProjectKey)),
+            project_account_tickets: LookupMap::new(get_storage_key(StorageKey::ProjectTicketKey)),
+            project_account_token_sales: LookupMap::new(get_storage_key(StorageKey::ProjectTokenSaleKey)),
+            project_tickets: LookupMap::new(get_storage_key(StorageKey::ProjectTicketKey)),
+            account_projects: LookupMap::new(get_storage_key(StorageKey::AccountProjectKey)),
         }
+    }
+
+    pub fn get_owner_id(&self) -> AccountId {
+        self.owner_id.clone()
     }
 }
