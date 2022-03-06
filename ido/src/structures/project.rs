@@ -7,7 +7,7 @@ pub enum SaleType {
     Vested
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq)]
 pub enum ProjectStatus {
     New,
     Approved,
@@ -95,7 +95,21 @@ impl IDOContract{
     pub fn get_project(&self, project_id: ProjectId) -> Option<JsonProject> {
         let project = self.projects.get(&project_id);
 
-        if let Some(project) = project {
+        self.internal_get_project(project_id, project)
+    }
+
+    pub fn get_projects(&self, status: Option<ProjectStatus>, from_index: Option<u64>, limit: Option<u64>) -> Vec<JsonProject>{
+        self.projects
+        .iter()
+        .filter(|(project_id, project_info)| match &status { None => true, Some(s) => &project_info.status == s })
+        .skip(from_index.unwrap_or(0) as usize)
+        .take(limit.unwrap_or(DEFAULT_PAGE_SIZE) as usize)
+        .map(|(project_id, project_info)| self.internal_get_project(project_id.clone(), Some(project_info)).unwrap())
+        .collect()
+    }
+
+    pub(crate) fn internal_get_project(&self, project_id: ProjectId, project_info: Option<ProjectInfo>) -> Option<JsonProject> {
+        if let Some(project) = project_info {
             Some(JsonProject {
                 id: project_id,
                 name: project.name,
@@ -119,14 +133,5 @@ impl IDOContract{
         } else {
             None
         }
-    }
-
-    pub fn get_projects(&self, status: Option<ProjectStatus>, from_index: Option<u64>, limit: Option<u64>) -> Vec<JsonProject>{
-        // TODO: Do paging
-
-        self.projects
-        .iter()
-        .map(|(project_id, project_info)| self.get_project(project_id.clone()).unwrap())
-        .collect()
     }
 }

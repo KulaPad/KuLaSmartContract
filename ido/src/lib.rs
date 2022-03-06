@@ -18,6 +18,8 @@ mod structures;
 mod utils;
 mod tests;
 
+pub const DEFAULT_PAGE_SIZE: u64 = 100;
+
 #[derive(BorshSerialize, BorshDeserialize)]
 pub enum StorageKey {
     ProjectKey,

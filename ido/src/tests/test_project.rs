@@ -46,4 +46,10 @@ fn test_create_and_get_project() {
 
     assert_eq!(1, json_project.id, "The created project id must equal to 1.");
     assert_eq!(project_name, json_project.name, "The project name must be the same.");
+
+    let new_projects = emulator.contract.get_projects(Some(ProjectStatus::New), None, None); 
+    let approved_projects = emulator.contract.get_projects(Some(ProjectStatus::Approved), None, None); 
+
+    assert_eq!(1, new_projects.len(), "The number of NEW projects in the contract is not correct!");
+    assert_eq!(0, approved_projects.len(), "The number of APPROVED projects in the contract is not correct!");
 }
