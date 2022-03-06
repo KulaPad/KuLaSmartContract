@@ -78,4 +78,14 @@ impl IDOContract{
     pub fn get_owner_id(&self) -> AccountId {
         self.owner_id.clone()
     }
+
+    // ====> sample project go here
+
+    // ====> whitelist go here
+
+    // ====> ticket go here
+
+    // ====> buy token go here
+
+    // ====> token vesting (claim) go here
 }
