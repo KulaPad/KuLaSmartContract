@@ -1,6 +1,5 @@
-
 use crate::*;
-use crate::structures::account::*;
+
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub enum SaleType {

@@ -11,6 +11,7 @@ pub type TicketId = u64;
 use crate::structures::project::*;
 use crate::structures::account::*;
 use crate::structures::ticket::*;
+use crate::structures::internal::*;
 use crate::utils::*;
 
 mod structures;
