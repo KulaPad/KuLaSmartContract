@@ -20,7 +20,7 @@ fn get_project_1() -> ProjectInfo {
         token_raised_amount: 40000,
         token_sale_rate: 10,
         sale_type: SaleType::FullUnlocked,
-        status: ProjectStatus::New,
+        status: ProjectStatus::Preparation,
         configuration: ProjectConfiguration {
             max_staking_tickets_per_user: 300,
             max_win_tickets_per_user: 10,
@@ -28,7 +28,6 @@ fn get_project_1() -> ProjectInfo {
         current_ticket_id: 0,
     }
 }
-
 #[test]
 fn test_create_and_get_project() {
     let mut emulator = Emulator::default();
@@ -38,7 +37,7 @@ fn test_create_and_get_project() {
 
     emulator.contract.create_project(project);
 
-    let projects = emulator.contract.get_projects(None, None, None); 
+    let projects = emulator.contract.get_projects(None, None); 
 
     assert_eq!(1, projects.len(), "The number of projects in the contract is not correct!");
 

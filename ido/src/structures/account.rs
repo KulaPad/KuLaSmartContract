@@ -8,6 +8,7 @@ pub struct AccountTickets {
 
 #[derive(BorshSerialize, BorshDeserialize)]
 pub struct AccountTokenSales {
+    // Deposit amount to buy project token
     pub funding_amount: Balance,
     pub token_unlocked_amount: Balance,
     pub token_locked_amount: Balance,
@@ -15,7 +16,8 @@ pub struct AccountTokenSales {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct JsonAccountInfo {
+#[serde(crate = "near_sdk::serde")]
+pub struct AccountInfoJson {
     pub staking_tickets: u16,
     pub social_tickets: u16,
     pub referral_tickets: u16,

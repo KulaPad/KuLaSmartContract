@@ -2,23 +2,26 @@ use crate::*;
 
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
 pub enum SaleType {
     FullUnlocked,
     Vested
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize,Serialize, Deserialize,PartialEq)]
+#[serde(crate = "near_sdk::serde")]
 pub enum ProjectStatus {
-    New,
-    Approved,
-    Rejected,
     Preparation,
     Whitelist,
     Sales,
     Distribution,
+    Rejected
 }
 
+
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+
 pub struct ProjectInfo {
     /// yourproject.near
     pub owner_id: AccountId,
@@ -51,6 +54,7 @@ pub struct ProjectInfo {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
 pub struct ProjectConfiguration {
     pub max_staking_tickets_per_user: u16,
     pub max_win_tickets_per_user: u8,
@@ -78,18 +82,80 @@ pub struct JsonProject {
     pub whitelist_accounts: u16,
     pub configuration: ProjectConfiguration,
 }
-impl ProjectInfo {
-
-}
 
 #[near_bindgen]
 impl IDOContract{
+
+    
+
     pub fn create_project(&mut self, project_info: ProjectInfo) {
         // Get next Id
         let project_id = self.projects.len() + 1;
+        
 
         // Insert the project
         self.projects.insert(&project_id, &project_info);
+
+    }
+
+    pub fn join_new_whitelist_project(&mut self,project_id:ProjectId, ticket_deposit: TicketsAmount) {
+
+        // Require deposit 1 yoctoNEAR for user's private  
+        assert_one_yocto_near();
+
+        assert!(project_id <= self.projects.len(),"Project ID not exists");
+
+        let mut project_info = self.projects.get(&project_id).unwrap();
+        assert!(project_info.status == ProjectStatus::Whitelist,"Project is not whitelisted");
+
+        let account_id = env::predecessor_account_id();
+
+        let mut owner_tickets = self.staking_tickets_amount_per_owner_id.get(&account_id).unwrap_or(0);
+        assert!(owner_tickets >= ticket_deposit,"Staking ticket of owner id must be greater than tickets amount deposit" );
+        
+        // Deposit some staking tickets when join project => Subtitute them with ticket_deposit
+        owner_tickets -= ticket_deposit;
+        self.staking_tickets_amount_per_owner_id.insert(&account_id,&owner_tickets);
+        
+        let mut projects_joined = self.account_projects.get(&account_id)
+                                                        .unwrap_or_else(|| {
+                                                            UnorderedSet::new(StorageKey::AccountProjectInnerKey{
+                                                                account_id_hash: hash_account_id(&account_id)
+                                            }.try_to_vec().unwrap())
+                                                        });
+        // Add project to owner
+        projects_joined.insert(&project_id);
+
+        
+        self.account_projects.insert(&account_id,&projects_joined);
+
+        for _ in 0..ticket_deposit{
+            self.mint_staking_ticket(project_id,account_id.clone());
+        };
+
+        // Change current_ticket_id of project_info
+        project_info.current_ticket_id += ticket_deposit;
+        self.projects.insert(&project_id,&project_info);
+
+        // TODO:Unit test
+    }
+
+    pub fn check_joined_whitelist(&self, account_id:AccountId, project_id: ProjectId)-> bool {
+        let current_ticket_id = self.project_tickets.get(&project_id)
+                                                                    .unwrap_or_else(||{
+                                                                        panic!("No project found");
+                                                                    }).len();
+        for i in 0..current_ticket_id{
+            let project_and_ticket_id = format!("{}.{}",project_id,i+1);
+            let ticket = self.ticket_info.get(&project_and_ticket_id).unwrap();
+            if ticket.account_id == account_id {
+                return true;
+            }
+        }
+
+        false
+
+        // TODO: Unit test
     }
 
     pub fn get_project(&self, project_id: ProjectId) -> Option<JsonProject> {
@@ -121,12 +187,40 @@ impl IDOContract{
         }
     }
 
-    pub fn get_projects(&self, status: Option<ProjectStatus>, from_index: Option<u64>, limit: Option<u64>) -> Vec<JsonProject>{
-        // TODO: Do paging
+    pub fn get_projects(&self, from_index: Option<u64>, limit: Option<u64>) -> Vec<JsonProject>{
+        let projects_keys = self.projects.keys_as_vector();
 
-        self.projects
-        .iter()
-        .map(|(project_id, project_info)| self.get_project(project_id.clone()).unwrap())
-        .collect()
+        let start = from_index.unwrap_or(0);
+        projects_keys.iter()
+            .skip(start as usize)
+            .take(limit.unwrap_or(0) as usize)
+            .map(|project_id| self.get_project(project_id).unwrap())
+            .collect()
+
+
+        
+        // TODO: Unit test
     }
+
+    pub fn get_projects_for_account(&self,account_id:AccountId, from_index: Option<u64>, limit: Option<u64>) -> Vec<JsonProject>{
+        let account_projects = self.account_projects.get(&account_id);
+        
+        let projects = if let Some(account_projects) = account_projects{
+            account_projects
+        } else {
+            return vec![];
+        };
+
+        let start = from_index.unwrap_or(0);
+
+        projects.iter()
+            .skip(start as usize)
+            .take(limit.unwrap_or(0) as usize)
+            .map(|project_id| self.get_project(project_id).unwrap())
+            .collect()
+
+        //  TODO: Unit test
+    }
+    
+
 }
