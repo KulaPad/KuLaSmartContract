@@ -2,7 +2,9 @@ use crate::*;
 
 #[derive(BorshSerialize, BorshDeserialize)]
 pub struct AccountTickets {
-    pub ticket_ids: Vec<TicketId>,
+    pub staking_ticket_ids: Vec<TicketId>,
+    pub social_ticket_ids: Vec<TicketId>,
+    pub referral_ticket_ids: Vec<TicketId>,
     pub win_ticket_ids: Vec<TicketId>,
 }
 
@@ -15,7 +17,7 @@ pub struct AccountTokenSales {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct JsonAccountInfo {
+pub struct JsonAccountTicketInfo {
     pub staking_tickets: u16,
     pub social_tickets: u16,
     pub referral_tickets: u16,
