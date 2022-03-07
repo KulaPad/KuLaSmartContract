@@ -94,6 +94,36 @@ impl IDOContract{
     pub fn get_owner_id(&self) -> AccountId {
         self.owner_id.clone()
     }
+    
+   /// Register an account for a project's whitelist
+    /// User can only register the whitelist on the whitelist period of the project
+    /// Account id is env::signer_account_id()
+    pub fn register_whitelist(&mut self, project_id: ProjectId) {
+
+    }
+
+    /// Check an account wherever registered for a project or not
+    pub fn is_whitelist(&self, project_id: ProjectId) -> bool {
+        false
+    }
+
+    /// User deposits the exact acount of funding to buy token
+    /// Account id is env::signer_account_id()
+    /// This function support NEAR deposit only
+    #[payable]
+    pub fn buy_token(&mut self, project_id: ProjectId) {
+
+    }
+
+    /// Get token sales info of an account. If it does not exits, return None.
+    pub fn get_account_token_sale_info(& self, project_id: ProjectId) -> Option<JsonAccountTokenSales> {
+        None
+    }
+
+    /// User can claim their bought unlocked token after sales.
+    pub fn claim(&mut self, project_id: ProjectId) {
+
+    }
 
     // ====> sample project go here
 
