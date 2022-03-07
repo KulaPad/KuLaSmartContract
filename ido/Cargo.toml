@@ -10,7 +10,6 @@ crate-type = ["cdylib","rlib"]
 [dependencies]
 near-sdk = "3.1.0"
 near-contract-standards = "3.2.0"
-borsh = "0.9.3"
 serde = { version = "1.0", features = ["derive"] }
 
 [profile.release]

@@ -1,6 +1,5 @@
 use crate::*;
 
-
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub enum SaleType {
     FullUnlocked,

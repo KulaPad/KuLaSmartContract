@@ -19,6 +19,7 @@ mod utils;
 mod tests;
 
 pub const DEFAULT_PAGE_SIZE: u64 = 100;
+pub const TOKEN_DECIMAL: u8 = 8;
 
 #[derive(BorshSerialize, BorshDeserialize)]
 pub enum StorageKey {
@@ -36,6 +37,9 @@ pub enum StorageKey {
 
     },
     AccountProjectKey,
+    TierKey,
+    TierTicketInnerKey (String),
+    TierAllocationInnerKey (String),
 }
 
 #[near_bindgen]
@@ -66,6 +70,9 @@ pub struct IDOContract{
 
     /// Last increment ticket id
     pub last_ticket_id: TicketId,
+
+    /// The information of tiers that helps to identify the number of tickets to allocation to a specific user when they joined to a project
+    pub tiers: UnorderedMap<StakingTier, TierInfo>,
 }
 
 #[near_bindgen]
@@ -79,6 +86,7 @@ impl IDOContract{
             project_account_token_sales: LookupMap::new(get_storage_key(StorageKey::ProjectTokenSaleKey)),
             project_tickets: LookupMap::new(get_storage_key(StorageKey::ProjectTicketKey)),
             account_projects: LookupMap::new(get_storage_key(StorageKey::AccountProjectKey)),
+            tiers: initialize_tiers(TOKEN_DECIMAL),
             last_ticket_id: 0,
         }
     }
@@ -160,25 +168,25 @@ impl IDOContract{
             StakingTier::Tier4 => ticketConfig.tier4[valid_lock_day_count_idx],
         };
 
-        let ticket_rank: TicketRank = if user_staking_info.tier == StakingTier.Tier4 { TicketRank.Vip } else { TicketRank.Normal };
-        let tickets = self.issue_staking_ticket(
-            project_id: ProjectId,
-            issue_amount,
-            ticket_rank
-        );
-        let ticket_ids: Vec<TicketId> = tickets.iter().map(|&t| t.id).collect::<Vec<_>>();
-        let mut win_ticket_ids = vec![];
-        if ticket_rank == TicketRank.Vip {
-            win_ticket_ids = ticket_ids.clone();
-        }
+        // let ticket_rank: TicketRank = if user_staking_info.tier == StakingTier.Tier4 { TicketRank.Vip } else { TicketRank.Normal };
+        // let tickets = self.issue_staking_ticket(
+        //     project_id: ProjectId,
+        //     issue_amount,
+        //     ticket_rank
+        // );
+        // let ticket_ids: Vec<TicketId> = tickets.iter().map(|&t| t.id).collect::<Vec<_>>();
+        // let mut win_ticket_ids = vec![];
+        // if ticket_rank == TicketRank.Vip {
+        //     win_ticket_ids = ticket_ids.clone();
+        // }
 
 
 
         let mut user_ticket_info = AccountTickets {
-            staking_ticket_ids: ticket_ids,
+            staking_ticket_ids: Vec::new(), //ticket_ids,
             social_ticket_ids: vec![],
             referral_ticket_ids: vec![],
-            win_ticket_ids,
+            win_ticket_ids: Vec::new(),
         };
 
         JsonAccountTicketInfo {
@@ -189,14 +197,14 @@ impl IDOContract{
         }
     }
 
-    /// Batch issue ticket for users
-    /// Eg: issue ticket 100 -> 200 to to current user
+    // /// Batch issue ticket for users
+    // /// Eg: issue ticket 100 -> 200 to to current user
     pub fn issue_staking_ticket(&mut self, project_id: ProjectId, tickets_count: u32, rank: TicketRank) -> Vec<Ticket> {
         let mut new_tickets: Vec<Ticket> = vec![];
 
         // take up some ticket
         let last_ticket_id = self.last_ticket_id;
-        self.last_ticket_id = last_ticket_id + tickets_count;
+        self.last_ticket_id = last_ticket_id + tickets_count as u64;
 
 
         let user = env::signer_account_id();
@@ -204,7 +212,8 @@ impl IDOContract{
         // init if not exist
         let pt = self.project_tickets.get(&project_id);
         let mut project_tickets: LookupMap<TicketId, Ticket> = if pt.is_none() {
-            LookupMap::new(concat!("p", project_id, "_tickets_"))
+            //LookupMap::new(concat!("p", project_id as String, "_tickets_"))
+            LookupMap::new(b"".to_vec())
         } else {
             pt.unwrap()
         };
@@ -212,7 +221,8 @@ impl IDOContract{
         // init if not exist
         let pat = self.project_account_tickets.get(&project_id);
         let mut project_account_tickets: UnorderedMap<AccountId, AccountTickets> = if pat.is_none() {
-            UnorderedMap::new(concat!("p", project_id, "_a", user, "_tickets_"))
+            //UnorderedMap::new(concat!("p", project_id, "_a", user, "_tickets_"))
+            UnorderedMap::new(b"".to_vec())
         } else {
             pat.unwrap()
         };
@@ -232,14 +242,15 @@ impl IDOContract{
 
 
         // issue ticket
-        for i in last_ticket_id + 1..last_ticket_id + tickets_count + 1 {
+        for i in last_ticket_id + 1..last_ticket_id + tickets_count as u64 + 1 {
             let ticket = Ticket {
                 id: i,
                 account_id: user.clone(),
                 ticket_type: TicketType::Staking,
-                rank: rank.clone(),
+                //rank: rank,
+                rank: TicketRank::Normal,
             };
-            new_tickets.push(ticket);
+            //new_tickets.push(ticket);
             project_tickets.insert(&i, &ticket);
             account_tickets.staking_ticket_ids.push(i);
         };
