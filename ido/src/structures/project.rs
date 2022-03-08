@@ -1,12 +1,12 @@
 use crate::*;
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize,PartialEq)]
 pub enum SaleType {
     FullUnlocked,
     Vested
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug,PartialEq)]
 pub enum ProjectStatus {
     Proposed,
     Approved,
@@ -128,7 +128,7 @@ impl IDOContract{
     pub fn get_projects(&self, status: Option<ProjectStatus>, from_index: Option<u64>, limit: Option<u64>) -> Vec<ProjectInfoJson>{
         self.projects
         .iter()
-        .filter(|(project_id, project_info)| match &status { None => true, Some(s) => &project_info.status == s })
+        .filter(|(_, project_info)| match &status { None => true, Some(s) => &project_info.status == s })
         .skip(from_index.unwrap_or(0) as usize)
         .take(limit.unwrap_or(DEFAULT_PAGE_SIZE) as usize)
         .map(|(project_id, project_info)| self.internal_get_project(project_id.clone(), Some(project_info)).unwrap())

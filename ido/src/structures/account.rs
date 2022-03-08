@@ -24,7 +24,7 @@ pub struct JsonAccountTicketInfo {
     pub win_tickets: u8,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize,PartialEq, Debug)]
 pub struct JsonAccountTokenSales {
     pub funding_amount: Balance,
     pub token_unlocked_amount: Balance,

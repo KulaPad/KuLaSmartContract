@@ -6,7 +6,7 @@ use crate::tests::test_utils::*;
 
 pub struct Emulator {
     pub contract: IDOContract,
-    context: VMContext,
+    pub context: VMContext,
 }
 
 impl Emulator {
@@ -29,11 +29,11 @@ impl Emulator {
         Emulator::new(owner().clone())
     }
 
-    pub fn update_context(&mut self, predecessor_account_id: String, deposit: Balance) {
+    pub fn update_context(&mut self, predecessor_account_id: String,signer_account_id:String, deposit: Balance) {
         self.context = VMContextBuilder::new()
             .current_account_id(staking())
-            .predecessor_account_id(predecessor_account_id.clone())
-            .signer_account_id(predecessor_account_id)
+            .predecessor_account_id(predecessor_account_id)
+            .signer_account_id(signer_account_id)
             .attached_deposit(deposit)
             .finish();
         testing_env!(self.context.clone());

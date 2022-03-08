@@ -1,8 +1,8 @@
-
+use near_sdk::{init, env, near_bindgen};
+use near_sdk::{PanicOnDefault, Timestamp, Balance, AccountId, CryptoHash, Promise};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{init, env, near_bindgen, PanicOnDefault, Timestamp, Balance, AccountId, CryptoHash};
-use near_sdk::collections::{UnorderedMap, LazyOption, LookupMap};
+use near_sdk::collections::{UnorderedMap, UnorderedSet, LookupMap};
 use near_sdk::json_types::{U128};
 
 pub type ProjectId = u64;
@@ -36,6 +36,9 @@ pub enum StorageKey {
 
     },
     AccountProjectKey,
+    AccountProjectKeyInnerKey { 
+        account_id_hash: CryptoHash
+    },
     TierKey,
     TierTicketInnerKey (String),
     TierAllocationInnerKey (String),
@@ -56,7 +59,7 @@ pub struct IDOContract{
     pub project_account_tickets: LookupMap<ProjectId, UnorderedMap<AccountId, AccountTickets>>,
 
     /// Stores the list of token sales of an account in each project.
-    pub project_account_token_sales: LookupMap<ProjectId, UnorderedMap<AccountId, AccountTokenSales>>,
+    pub project_account_token_sales: LookupMap<ProjectId, LookupMap<AccountId, AccountTokenSales>>,
 
     /// Stores the list of tickets that belongs to each project.
     /// Ex: Project 1: Tickets [{Id: 1, Type: Staking, Account Id: account1.testnet }, {Id: 2, Type: Social, Account Id: account2.testnet }, ...]
@@ -65,7 +68,7 @@ pub struct IDOContract{
     pub project_tickets: LookupMap<ProjectId, LookupMap<TicketId, Ticket>>,
 
     /// The list of projects that that account has registered whitelist.
-    pub account_projects: LookupMap<AccountId, Vec<ProjectId>>,
+    pub account_projects: LookupMap<AccountId, UnorderedSet<ProjectId>>,
 
     /// Last increment ticket id
     pub last_ticket_id: TicketId,
@@ -108,11 +111,36 @@ impl IDOContract{
     /// User can only register the whitelist on the whitelist period of the project
     /// Account id is env::signer_account_id()
     pub fn register_whitelist(&mut self, project_id: ProjectId) {
+        let project_info = self.projects.get(&project_id)
+                                                .expect("No project found");                                                
+        assert_eq!(project_info.status, ProjectStatus::Whitelist,"Project isn't on whitelist");
+
+        let account_id = env::signer_account_id();
+        let mut account_projects = self.account_projects
+                                    .get(&account_id)
+                                    .unwrap_or_else(|| {
+                                        UnorderedSet::new(
+                                            get_storage_key(StorageKey::AccountProjectKeyInnerKey{
+                                                account_id_hash: hash_account_id(&account_id)
+                                            })
+                                        )
+                                    });
+        assert!(!account_projects.contains(&project_id),"Already register whitelist this project");
+        account_projects.insert(&project_id);
+        self.account_projects.insert(&account_id,&account_projects);
+
 
     }
 
     /// Check an account wherever registered for a project or not
     pub fn is_whitelist(&self, project_id: ProjectId) -> bool {
+        let account_id = env::signer_account_id();
+        let account_projects = self.account_projects
+                                    .get(&account_id)
+                                    .unwrap();
+        if account_projects.contains(&project_id){
+            return true;
+        }
         false
     }
 
@@ -121,12 +149,80 @@ impl IDOContract{
     /// This function support NEAR deposit only
     #[payable]
     pub fn buy_token(&mut self, project_id: ProjectId) {
-
+        let deposit_amount = env::attached_deposit();
+        assert!(deposit_amount>10_000_000_000_000_000_000_000_000,"Must deposit at least 10 Near");
+        let project_info = self.projects.get(&project_id).expect("No project found");
+        assert!(project_info.status == ProjectStatus::Sales,"Project is not on sale");
+        let account_id = env::signer_account_id();
+        let mut project_account_token_sales = self.project_account_token_sales.get(&project_id)
+                                                                            .unwrap_or_else(||{
+                                                                                LookupMap::new(
+                                                                                    get_storage_key(
+                                                                                        StorageKey::ProjectTokenSaleInnerKey{
+                                                                                            account_id_hash:hash_account_id(&account_id),
+                                                                                        }
+                                                                                    )
+                                                                                )
+                                                                            });
+        let account_token_sales = project_account_token_sales.get(&account_id)
+                                                                            .expect("Account didn't win the whitelist");  
+        let pre_deposit_amount = account_token_sales.funding_amount;            
+        
+        // Transfer deposit Near to contract owner
+        Promise::new(self.owner_id.clone()).transfer(deposit_amount);  
+        project_account_token_sales.insert(&account_id,&AccountTokenSales{
+            funding_amount: pre_deposit_amount+deposit_amount,
+            token_unlocked_amount: 0,
+            token_locked_amount: 0,
+            token_withdrawal_amount: 0,
+        });
+        self.project_account_token_sales.insert(&project_id,&project_account_token_sales);
     }
 
     /// Get token sales info of an account. If it does not exits, return None.
     pub fn get_account_token_sale_info(& self, project_id: ProjectId) -> Option<JsonAccountTokenSales> {
-        None
+        let account_id = env::signer_account_id();
+        let project_account_token_sales = self.project_account_token_sales.get(&project_id);
+        if let Some(project_account_token_sales) = project_account_token_sales{
+            let account_token_sales = project_account_token_sales.get(&account_id);
+            if let Some(account_token_sales)= account_token_sales{
+                Some(
+                    JsonAccountTokenSales{
+                        funding_amount: account_token_sales.funding_amount,
+                        token_unlocked_amount: account_token_sales.token_unlocked_amount,
+                        token_locked_amount: account_token_sales.token_locked_amount,
+                        token_withdrawal_amount: account_token_sales.token_withdrawal_amount
+                    }
+                )
+            }else{
+                None
+            }
+        }else{
+            None
+        }
+        
+    }
+
+    #[private]
+    pub fn create_default_account_token_sales(&mut self, project_id: ProjectId, account_id: &AccountId){
+        let default_account_token_sales = AccountTokenSales{
+            funding_amount: 0,
+            token_unlocked_amount:0,
+            token_locked_amount:0,
+            token_withdrawal_amount:0,
+        };
+        let mut account_token_sales = self.project_account_token_sales.get(&project_id)
+                                                                    .unwrap_or_else(||{
+                                                                        LookupMap::new(
+                                                                            get_storage_key(
+                                                                                StorageKey::ProjectTokenSaleInnerKey{
+                                                                                    account_id_hash:hash_account_id(&account_id),
+                                                                                }
+                                                                            )
+                                                                        )
+                                                                    });
+        account_token_sales.insert(&account_id,&default_account_token_sales);
+        self.project_account_token_sales.insert(&project_id,&account_token_sales);
     }
 
     /// User can claim their bought unlocked token after sales.
