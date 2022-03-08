@@ -30,6 +30,8 @@ pub struct TierInfo {
 
 impl TierInfo {
     fn new(tier: StakingTier, locked_amount: u64) -> Self {
+        env::log(format!("Creating tier... -> Tier: {:?}", tier).as_bytes());
+
         Self {
             locked_amount,
             no_of_tickets: UnorderedMap::new(get_storage_key(StorageKey::TierTicketInnerKey(format!("{:?}", tier)))),
@@ -39,6 +41,8 @@ impl TierInfo {
 }
 
 pub(crate) fn initialize_tiers(token_decimal: u8) -> UnorderedMap<StakingTier, TierInfo> {
+    env::log(format!("Initializing tiers...").as_bytes());
+
     let mut tiers = UnorderedMap::new(get_storage_key(StorageKey::TierKey));
     
     let mut tier1 = TierInfo::new(StakingTier::Tier1, 200 * token_decimal as u64);
@@ -46,12 +50,16 @@ pub(crate) fn initialize_tiers(token_decimal: u8) -> UnorderedMap<StakingTier, T
     let mut tier3 = TierInfo::new(StakingTier::Tier3, 5000 * token_decimal as u64);
     let mut tier4 = TierInfo::new(StakingTier::Tier4, 10000 * token_decimal as u64);
 
+    env::log(format!("Initializing tiers... -> Tiers created.").as_bytes());
+
     tier1.no_of_tickets.insert(&7, &1);
     tier1.no_of_tickets.insert(&14, &2);
     tier1.no_of_tickets.insert(&30, &4);
     tier1.no_of_tickets.insert(&90, &8);
     tier1.no_of_tickets.insert(&180, &12);
     tier1.no_of_tickets.insert(&365, &20);
+
+    env::log(format!("Initializing tiers... -> Tier1 inserted.").as_bytes());
 
     tier2.no_of_tickets.insert(&7, &6);
     tier2.no_of_tickets.insert(&14, &12);
@@ -78,10 +86,14 @@ pub(crate) fn initialize_tiers(token_decimal: u8) -> UnorderedMap<StakingTier, T
     tier4.no_of_allocations.insert(&30, &2);
     tier4.no_of_allocations.insert(&180, &3);
     
+    env::log(format!("Initializing tiers... -> Tiers created").as_bytes());
+
     tiers.insert(&StakingTier::Tier1, &tier1);
     tiers.insert(&StakingTier::Tier2, &tier2);
     tiers.insert(&StakingTier::Tier3, &tier3);
     tiers.insert(&StakingTier::Tier4, &tier4);
+
+    env::log(format!("Tiers initialized.").as_bytes());
 
     tiers
 }

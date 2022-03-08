@@ -2,15 +2,14 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{init, env, near_bindgen, PanicOnDefault, Timestamp, Balance, AccountId, CryptoHash};
-
 use near_sdk::collections::{UnorderedMap, LazyOption, LookupMap};
+use near_sdk::json_types::{U128};
 
 pub type ProjectId = u64;
 
 use crate::structures::project::*;
 use crate::structures::account::*;
 use crate::structures::ticket::*;
-use crate::structures::internal::*;
 use crate::structures::staking::*;
 use crate::utils::*;
 
@@ -79,6 +78,7 @@ pub struct IDOContract{
 impl IDOContract{
     #[init]
     pub fn new(owner_id: AccountId) -> Self {
+        env::log(format!("Creating contract...").as_bytes());
         Self {
             owner_id,
             projects: UnorderedMap::new(get_storage_key(StorageKey::ProjectKey)),
@@ -89,6 +89,15 @@ impl IDOContract{
             tiers: initialize_tiers(TOKEN_DECIMAL),
             last_ticket_id: 0,
         }
+    }
+
+    #[private]
+    #[init(ignore_state)]
+    pub fn migrate(owner_id: AccountId) -> Self {
+        env::log(format!("Migrating contract...").as_bytes());
+        let contract = IDOContract::new(owner_id);
+        env::log(format!("Contract migrated.").as_bytes());
+        contract
     }
 
     pub fn get_owner_id(&self) -> AccountId {
