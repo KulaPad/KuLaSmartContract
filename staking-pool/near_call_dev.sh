@@ -25,5 +25,7 @@ near call dev-1646718348240-77300820554298 get_account_info '{"account_id": "hoa
 near call dev-1646718348240-77300820554298 get_total_pending_reward --accountId dev-1646718348240-77300820554298
 near call dev-1646718348240-77300820554298 lock '{"amount": "500000000", "locked_time": 864000000000000}' --accountId   hoangtheanh.testnet
 
-lock
+
+near call dev-1646718348240-77300820554298 unlock '{"amount": "500000000", "locked_time": 864000000000000}' --accountId   hoangtheanh.testnet
+
 
