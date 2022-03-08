@@ -19,6 +19,7 @@ fn get_project_1() -> ProjectInfo {
         fund_symbol: "NEAR".to_string(),
         fund_contract_id: None,
         token_decimal: 8,
+        token_amount_per_sale_slot: 100,
         token_raised_amount: 40000,
         token_sale_rate: Rate::new(10u64, 1u64),
         sale_type: SaleType::FullUnlocked,

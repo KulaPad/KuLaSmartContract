@@ -64,6 +64,8 @@ pub struct ProjectInfo {
     pub token_sale_rate: Rate,
     /// 8
     pub token_decimal: u8,
+    /// The number of token that winner account can buy for one ticket like: 1.000 TOKEN / Ticket
+    pub token_amount_per_sale_slot: u32,
     /// None
     pub fund_contract_id: Option<AccountId>,
     /// NEAR
@@ -98,6 +100,7 @@ pub struct ProjectInfoJson {
     pub token_raised_amount: u64,
     pub token_sale_rate: f64,
     pub token_decimal: u8,
+    pub token_amount_per_sale_slot: u32,
     pub fund_symbol: String,
     pub sale_type: SaleType,
     pub hard_cap: u64,
@@ -153,6 +156,7 @@ impl IDOContract{
                 token_raised_amount: project.token_raised_amount,
                 token_sale_rate: project.token_sale_rate.get_rate(),
                 token_decimal: project.token_decimal,
+                token_amount_per_sale_slot: project.token_amount_per_sale_slot,
                 hard_cap: project.token_sale_rate.multiply(project.token_raised_amount as u128) as u64,
                 sale_type: project.sale_type,
                 status: project.status,
