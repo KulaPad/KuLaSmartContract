@@ -52,6 +52,20 @@ impl StakingContract {
         self.internal_unstake(account_id, amount.0);
     }
 
+    pub fn lock(&mut self, amount: U128, locked_time: u64) {
+        assert_one_yocto();
+        let account_id: AccountId = env::predecessor_account_id();
+
+        self.internal_lock(account_id, amount.0, locked_time);
+    }
+
+    pub fn unlock(&mut self) {
+        assert_one_yocto();
+        let account_id: AccountId = env::predecessor_account_id();
+
+        self.internal_unlock(account_id);
+    }
+
     #[payable]
     pub fn withdraw(&mut self) -> Promise {
         assert_one_yocto();
