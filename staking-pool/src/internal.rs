@@ -36,7 +36,8 @@ impl StakingContract {
 
     }
 
-    // User lock token
+    /// User lock token
+    /// locked_time = 8460000000000000 nanoseconds
     pub(crate) fn internal_lock(&mut self, account_id: AccountId, amount: Balance, locked_time: u64) {
 
         // Check account exists

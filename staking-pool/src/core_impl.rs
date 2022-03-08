@@ -6,7 +6,7 @@ pub const FT_TRANSFER_GAS: Gas = 10_000_000_000_000;
 pub const WITHDRAW_CALLBACK_GAS: Gas = 10_000_000_000_000;
 pub const HARVEST_CALLBACK_GAS: Gas = 10_000_000_000_000;
 
-pub trait FungibleTokenReceiver {
+pub trait   FungibleTokenReceiver {
     fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) -> PromiseOrValue<U128>;
 }
 
@@ -28,7 +28,7 @@ impl FungibleTokenReceiver for StakingContract {
      * 1. validate data
      * 2. handle stake
      */
-    fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, _msg: String) -> PromiseOrValue<U128> {
+    fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) -> PromiseOrValue<U128> {
         let upgradable_account: Option<UpgradableAccount> = self.accounts.get(&sender_id);
         assert!(upgradable_account.is_some(), "ERR_NOT_FOUND_ACCOUNT");
         assert!(!self.paused, "ERR_CONTRACT_PAUSED");
@@ -51,16 +51,14 @@ impl StakingContract {
 
         self.internal_unstake(account_id, amount.0);
     }
-
+    /// locked_time = 8460000000000000 nanoseconds
     pub fn lock(&mut self, amount: U128, locked_time: u64) {
-        assert_one_yocto();
         let account_id: AccountId = env::predecessor_account_id();
 
         self.internal_lock(account_id, amount.0, locked_time);
     }
 
     pub fn unlock(&mut self) {
-        assert_one_yocto();
         let account_id: AccountId = env::predecessor_account_id();
 
         self.internal_unlock(account_id);
