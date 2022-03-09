@@ -111,6 +111,12 @@ impl IDOContract{
     pub fn get_owner_id(&self) -> AccountId {
         self.owner_id.clone()
     }
+
+    pub fn set_owner_id(&mut self, owner_id: AccountId) {
+        assert_eq!(env::signer_account_id(), self.owner_id, "Just owner can do this action.");
+
+        self.owner_id = owner_id;
+    }
     
    /// Register an account for a project's whitelist
     /// User can only register the whitelist on the whitelist period of the project
