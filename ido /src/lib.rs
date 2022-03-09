@@ -59,7 +59,7 @@ pub struct IDOContract{
     pub project_account_tickets: LookupMap<ProjectId, UnorderedMap<AccountId, AccountTickets>>,
 
     /// Stores the list of token sales of an account in each project.
-    pub project_account_token_sales: LookupMap<ProjectId, LookupMap<AccountId, AccountTokenSales>>,
+    pub project_account_token_sales: LookupMap<ProjectId, UnorderedMap<AccountId, AccountTokenSales>>,
 
     /// Stores the list of tickets that belongs to each project.
     /// Ex: Project 1: Tickets [{Id: 1, Type: Staking, Account Id: account1.testnet }, {Id: 2, Type: Social, Account Id: account2.testnet }, ...]
@@ -111,20 +111,16 @@ impl IDOContract{
     /// User can only register the whitelist on the whitelist period of the project
     /// Account id is env::signer_account_id()
     pub fn register_whitelist(&mut self, project_id: ProjectId) {
-        let project_info = self.projects.get(&project_id)
-                                                .expect("No project found");                                                
+        let project_info = self.get_project_info(&project_id);                         
         assert_eq!(project_info.status, ProjectStatus::Whitelist,"Project isn't on whitelist");
+        let current_time = env::block_timestamp();
+        assert!((project_info.whitelist_start_date < current_time)
+                &&(project_info.whitelist_end_date > current_time),
+                "Project isn't on whitelist time");
 
         let account_id = env::signer_account_id();
-        let mut account_projects = self.account_projects
-                                    .get(&account_id)
-                                    .unwrap_or_else(|| {
-                                        UnorderedSet::new(
-                                            get_storage_key(StorageKey::AccountProjectKeyInnerKey{
-                                                account_id_hash: hash_account_id(&account_id)
-                                            })
-                                        )
-                                    });
+        let mut account_projects = self.unwrap_account_project(&account_id);
+
         assert!(!account_projects.contains(&project_id),"Already register whitelist this project");
         account_projects.insert(&project_id);
         self.account_projects.insert(&account_id,&account_projects);
@@ -137,7 +133,7 @@ impl IDOContract{
         let account_id = env::signer_account_id();
         let account_projects = self.account_projects
                                     .get(&account_id)
-                                    .unwrap();
+                                    .expect("Project not found");
         if account_projects.contains(&project_id){
             return true;
         }
@@ -148,35 +144,38 @@ impl IDOContract{
     /// Account id is env::signer_account_id()
     /// This function support NEAR deposit only
     #[payable]
-    pub fn buy_token(&mut self, project_id: ProjectId) {
-        let deposit_amount = env::attached_deposit();
-        assert!(deposit_amount>10_000_000_000_000_000_000_000_000,"Must deposit at least 10 Near");
+    pub fn buy_token(&mut self, project_id: ProjectId)-> Balance {
+        
         let project_info = self.projects.get(&project_id).expect("No project found");
         assert!(project_info.status == ProjectStatus::Sales,"Project is not on sale");
+        let current_time = env::block_timestamp();
+        assert!((project_info.sale_start_date < current_time)
+                &&(project_info.sale_end_date > current_time),
+                "Project isn't on sale time");
         let account_id = env::signer_account_id();
-        let mut project_account_token_sales = self.project_account_token_sales.get(&project_id)
-                                                                            .unwrap_or_else(||{
-                                                                                LookupMap::new(
-                                                                                    get_storage_key(
-                                                                                        StorageKey::ProjectTokenSaleInnerKey{
-                                                                                            account_id_hash:hash_account_id(&account_id),
-                                                                                        }
-                                                                                    )
-                                                                                )
-                                                                            });
-        let account_token_sales = project_account_token_sales.get(&account_id)
-                                                                            .expect("Account didn't win the whitelist");  
-        let pre_deposit_amount = account_token_sales.funding_amount;            
+        let mut project_account_token_sales = self.unwrap_project_account_token_sales(&account_id, project_id);         
         
         // Transfer deposit Near to contract owner
+        let account_tickets = self.unwrap_project_account_ticket(project_id, &account_id);
+        let tickets_win = account_tickets.win_ticket_ids.len();
+        assert!(tickets_win>0,"Account did not win the whitelist");
+
+        let must_attach_deposit = project_info.token_sale_rate
+                                        .multiply(project_info.token_amount_per_sale_slot as u128);
+        let deposit_amount = env::attached_deposit();
+        assert_eq!(deposit_amount,must_attach_deposit,"Must deposit {} NEAR",must_attach_deposit);
+        
         Promise::new(self.owner_id.clone()).transfer(deposit_amount);  
         project_account_token_sales.insert(&account_id,&AccountTokenSales{
-            funding_amount: pre_deposit_amount+deposit_amount,
+            funding_amount: deposit_amount,
             token_unlocked_amount: 0,
             token_locked_amount: 0,
             token_withdrawal_amount: 0,
         });
         self.project_account_token_sales.insert(&project_id,&project_account_token_sales);
+        
+        // Return deposited_near
+        deposit_amount
     }
 
     /// Get token sales info of an account. If it does not exits, return None.
@@ -203,27 +202,6 @@ impl IDOContract{
         
     }
 
-    #[private]
-    pub fn create_default_account_token_sales(&mut self, project_id: ProjectId, account_id: &AccountId){
-        let default_account_token_sales = AccountTokenSales{
-            funding_amount: 0,
-            token_unlocked_amount:0,
-            token_locked_amount:0,
-            token_withdrawal_amount:0,
-        };
-        let mut account_token_sales = self.project_account_token_sales.get(&project_id)
-                                                                    .unwrap_or_else(||{
-                                                                        LookupMap::new(
-                                                                            get_storage_key(
-                                                                                StorageKey::ProjectTokenSaleInnerKey{
-                                                                                    account_id_hash:hash_account_id(&account_id),
-                                                                                }
-                                                                            )
-                                                                        )
-                                                                    });
-        account_token_sales.insert(&account_id,&default_account_token_sales);
-        self.project_account_token_sales.insert(&project_id,&account_token_sales);
-    }
 
     /// User can claim their bought unlocked token after sales.
     pub fn claim(&mut self, project_id: ProjectId) {
