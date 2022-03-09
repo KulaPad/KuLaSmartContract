@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize,Serialize, Deserialize)]
 pub struct AccountTickets {
     pub staking_ticket_ids: Vec<TicketId>,
     pub social_ticket_ids: Vec<TicketId>,
@@ -8,7 +8,7 @@ pub struct AccountTickets {
     pub win_ticket_ids: Vec<TicketId>,
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct AccountTokenSales {
     pub funding_amount: Balance,
     pub token_unlocked_amount: Balance,

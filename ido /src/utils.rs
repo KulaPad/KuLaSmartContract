@@ -26,9 +26,57 @@ pub(crate) fn hash_account_id(account_id: &AccountId) -> CryptoHash{
     hash
 }
 
-#[near_bindgen]
+
 impl IDOContract{
 
+    pub fn get_project_info(&self, project_id: &ProjectId)-> ProjectInfo{
+
+        let project_info = self.projects.get(&project_id)
+                                                .expect("No project found");
+        project_info
+    }
+
+    pub fn unwrap_account_project(&self,account_id: &AccountId)
+            -> UnorderedSet<u64> {
+        let account_projects = self.account_projects
+                                    .get(&account_id)
+                                    .unwrap_or_else(|| {
+                                        UnorderedSet::new(
+                                            get_storage_key(StorageKey::AccountProjectKeyInnerKey{
+                                                account_id_hash: hash_account_id(&account_id)
+                                            })
+                                        )
+                                    });
+        account_projects
+    }
+
+    pub fn unwrap_project_account_token_sales(&self, account_id: &AccountId, project_id: ProjectId) 
+            -> UnorderedMap<String, AccountTokenSales>{
+        let project_account_token_sales = self.project_account_token_sales.get(&project_id)
+                                                .unwrap_or_else(||{
+                                                    // TODO: write a discipline function
+                                                    UnorderedMap::new(
+                                                        get_storage_key(
+                                                            StorageKey::ProjectTokenSaleInnerKey{
+                                                                account_id_hash:hash_account_id(&account_id),
+                                                            }
+                                                        )
+                                                    )
+                                                });
+        project_account_token_sales
+    }
+
+    pub fn unwrap_project_account_ticket(&self, project_id: ProjectId, account_id: &AccountId) -> AccountTickets{
+        let project_account_tickets = self.project_account_tickets.get(&project_id)
+                                                        .expect("No project found");
+        let account_tickets = project_account_tickets.get(account_id)
+                                                        .expect("Account didn't join whitelist");
+        account_tickets
+    }
+}
+
+#[near_bindgen]
+impl IDOContract{
     // Function use for testing_buytoken
     #[private]
     pub fn create_default_account_token_sales(&mut self, project_id: ProjectId, account_id: &AccountId){
@@ -50,50 +98,5 @@ impl IDOContract{
                                                                     });
         account_token_sales.insert(&account_id,&default_account_token_sales);
         self.project_account_token_sales.insert(&project_id,&account_token_sales);
-    }
-
-    pub fn get_project_info(&self, project_id: &ProjectId)-> ProjectInfo{
-
-        let project_info = self.projects.get(&project_id)
-                                                .expect("No project found");
-        project_info
-    }
-
-    pub fn unwrap_account_project(&self,account_id: &AccountId)
-            -> UnorderedSet<ProjectId> {
-        let account_projects = self.account_projects
-                                    .get(&account_id)
-                                    .unwrap_or_else(|| {
-                                        UnorderedSet::new(
-                                            get_storage_key(StorageKey::AccountProjectKeyInnerKey{
-                                                account_id_hash: hash_account_id(&account_id)
-                                            })
-                                        )
-                                    });
-        account_projects
-    }
-
-    pub fn unwrap_project_account_token_sales(&self, account_id: &AccountId, project_id: ProjectId) 
-            -> UnorderedMap<AccountId, AccountTokenSales>{
-        let project_account_token_sales = self.project_account_token_sales.get(&project_id)
-                                                .unwrap_or_else(||{
-                                                    // TODO: write a discipline function
-                                                    UnorderedMap::new(
-                                                        get_storage_key(
-                                                            StorageKey::ProjectTokenSaleInnerKey{
-                                                                account_id_hash:hash_account_id(&account_id),
-                                                            }
-                                                        )
-                                                    )
-                                                });
-        project_account_token_sales
-    }
-
-    pub fn unwrap_project_account_ticket(&self, project_id: ProjectId, account_id: &AccountId) -> AccountTickets{
-        let project_account_tickets = self.project_account_tickets.get(&project_id)
-                                                        .expect("No project found");
-        let account_tickets = project_account_tickets.get(account_id)
-                                                        .expect("Account didn't join whitelist");
-        account_tickets
     }
 }
