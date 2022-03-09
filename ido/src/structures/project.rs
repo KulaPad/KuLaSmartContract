@@ -70,7 +70,8 @@ pub struct ProjectInfo {
     pub fund_contract_id: Option<AccountId>,
     /// NEAR
     pub fund_symbol: String,
-
+    /// The total fund that users deposited to buy token
+    pub total_fund_received: Balance,
     pub sale_type: SaleType,
     pub configuration: ProjectConfiguration,
     pub current_ticket_id: TicketId,

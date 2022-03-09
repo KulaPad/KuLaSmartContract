@@ -19,6 +19,7 @@ mod tests;
 
 pub const DEFAULT_PAGE_SIZE: u64 = 100;
 pub const TOKEN_DECIMAL: u8 = 8;
+pub const STAKING_CONTRACT_ID: &str = "staking-kulapad.testnet";
 
 #[derive(BorshSerialize, BorshDeserialize)]
 pub enum StorageKey {
@@ -50,6 +51,9 @@ pub struct IDOContract{
     /// The owner of this contract.
     pub owner_id: AccountId,
 
+    /// The account id of staking contract. It used for cross-contract call
+    pub staking_contract_id: AccountId,
+
     /// Stores the list of projects that belongs to this IDO contract.
     pub projects: UnorderedMap<ProjectId, ProjectInfo>,
 
@@ -80,10 +84,11 @@ pub struct IDOContract{
 #[near_bindgen]
 impl IDOContract{
     #[init]
-    pub fn new(owner_id: AccountId) -> Self {
+    pub fn new(owner_id: AccountId, staking_contract_id: Option<AccountId>) -> Self {
         env::log(format!("Creating contract...").as_bytes());
         Self {
             owner_id,
+            staking_contract_id: staking_contract_id.unwrap_or(STAKING_CONTRACT_ID.to_string()),
             projects: UnorderedMap::new(get_storage_key(StorageKey::ProjectKey)),
             project_account_tickets: LookupMap::new(get_storage_key(StorageKey::ProjectTicketKey)),
             project_account_token_sales: LookupMap::new(get_storage_key(StorageKey::ProjectTokenSaleKey)),
@@ -96,9 +101,9 @@ impl IDOContract{
 
     #[private]
     #[init(ignore_state)]
-    pub fn migrate(owner_id: AccountId) -> Self {
+    pub fn migrate(owner_id: AccountId, staking_contract_id: Option<AccountId>) -> Self {
         env::log(format!("Migrating contract...").as_bytes());
-        let contract = IDOContract::new(owner_id);
+        let contract = IDOContract::new(owner_id, staking_contract_id);
         env::log(format!("Contract migrated.").as_bytes());
         contract
     }
@@ -114,8 +119,8 @@ impl IDOContract{
         let project_info = self.get_project_info(&project_id);                         
         assert_eq!(project_info.status, ProjectStatus::Whitelist,"Project isn't on whitelist");
         let current_time = env::block_timestamp();
-        assert!((project_info.whitelist_start_date < current_time)
-                &&(project_info.whitelist_end_date > current_time),
+        assert!((project_info.whitelist_start_date <= current_time)
+                &&(project_info.whitelist_end_date >= current_time),
                 "Project isn't on whitelist time");
 
         let account_id = env::signer_account_id();
@@ -149,8 +154,8 @@ impl IDOContract{
         let project_info = self.projects.get(&project_id).expect("No project found");
         assert!(project_info.status == ProjectStatus::Sales,"Project is not on sale");
         let current_time = env::block_timestamp();
-        assert!((project_info.sale_start_date < current_time)
-                &&(project_info.sale_end_date > current_time),
+        assert!((project_info.sale_start_date <= current_time)
+                &&(project_info.sale_end_date >= current_time),
                 "Project isn't on sale time");
         let account_id = env::signer_account_id();
         let mut project_account_token_sales = self.unwrap_project_account_token_sales(&account_id, project_id);         
@@ -166,7 +171,8 @@ impl IDOContract{
         let deposit_amount = env::attached_deposit();
         assert_eq!(deposit_amount,must_attach_deposit,"Must deposit {} NEAR",must_attach_deposit);
         
-        Promise::new(self.owner_id.clone()).transfer(deposit_amount);  
+        // TODO: Increase total fund of NEAR that user deposited for this project to buy token
+
         project_account_token_sales.insert(&account_id,&AccountTokenSales{
             funding_amount: deposit_amount,
             token_unlocked_amount: 0,

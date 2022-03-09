@@ -22,6 +22,7 @@ fn get_project_1() -> ProjectInfo {
         token_amount_per_sale_slot: 100,
         token_raised_amount: 40000,
         token_sale_rate: Rate::new(10u64, 1u64),
+        total_fund_received: 0,
         sale_type: SaleType::FullUnlocked,
         status: ProjectStatus::Proposed,
         configuration: ProjectConfiguration {

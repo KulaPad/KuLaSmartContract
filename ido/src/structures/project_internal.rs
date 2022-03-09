@@ -23,6 +23,7 @@ impl IDOContract{
             token_sale_rate: Rate::new(1u64, 100u64),
             fund_contract_id: None,
             fund_symbol: "Near".to_string(),
+            total_fund_received: 0,
             sale_type: SaleType::FullUnlocked,
             configuration: ProjectConfiguration{ 
                 max_staking_tickets_per_user: 500, 
@@ -53,6 +54,7 @@ impl IDOContract{
             token_sale_rate: Rate::new(1u64, 100u64),
             fund_contract_id: None,
             fund_symbol: "Near".to_string(),
+            total_fund_received: 0,
             sale_type: SaleType::FullUnlocked,
             configuration: ProjectConfiguration{ 
                 max_staking_tickets_per_user: 800, 
@@ -83,6 +85,7 @@ impl IDOContract{
             token_sale_rate: Rate::new(1u64, 100u64),
             fund_contract_id: None,
             fund_symbol: "Near".to_string(),
+            total_fund_received: 0,
             sale_type: SaleType::FullUnlocked,
             configuration: ProjectConfiguration{ 
                 max_staking_tickets_per_user: 500, 
@@ -113,6 +116,7 @@ impl IDOContract{
             token_sale_rate: Rate::new(1u64, 100u64),
             fund_contract_id: None,
             fund_symbol: "Near".to_string(),
+            total_fund_received: 0,
             sale_type: SaleType::FullUnlocked,
             configuration: ProjectConfiguration{ 
                 max_staking_tickets_per_user: 500, 
@@ -144,6 +148,7 @@ impl IDOContract{
             token_sale_rate: Rate::new(1u64, 100u64),
             fund_contract_id: None,
             fund_symbol: "Near".to_string(),
+            total_fund_received: 0,
             sale_type: SaleType::FullUnlocked,
             configuration: ProjectConfiguration{ 
                 max_staking_tickets_per_user: 500, 
@@ -174,6 +179,7 @@ impl IDOContract{
             token_sale_rate: Rate::new(1u64, 100u64),
             fund_contract_id: None,
             fund_symbol: "Near".to_string(),
+            total_fund_received: 0,
             sale_type: SaleType::Vested,
             configuration: ProjectConfiguration{ 
                 max_staking_tickets_per_user: 500, 
@@ -204,6 +210,7 @@ impl IDOContract{
             token_sale_rate: Rate::new(1u64, 100u64),
             fund_contract_id: None,
             fund_symbol: "Near".to_string(),
+            total_fund_received: 0,
             sale_type: SaleType::Vested,
             configuration: ProjectConfiguration{ 
                 max_staking_tickets_per_user: 500, 
@@ -235,6 +242,7 @@ impl IDOContract{
             fund_contract_id: None,
             fund_symbol: "Near".to_string(),
             sale_type: SaleType::Vested,
+            total_fund_received: 0,
             configuration: ProjectConfiguration{ 
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
@@ -265,6 +273,7 @@ impl IDOContract{
             fund_contract_id: None,
             fund_symbol: "Near".to_string(),
             sale_type: SaleType::Vested,
+            total_fund_received: 0,
             configuration: ProjectConfiguration{ 
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
@@ -295,6 +304,7 @@ impl IDOContract{
             fund_contract_id: None,
             fund_symbol: "Near".to_string(),
             sale_type: SaleType::Vested,
+            total_fund_received: 0,
             configuration: ProjectConfiguration{ 
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
