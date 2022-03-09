@@ -161,7 +161,8 @@ impl IDOContract{
         assert!(tickets_win>0,"Account did not win the whitelist");
 
         let must_attach_deposit = project_info.token_sale_rate
-                                        .multiply(project_info.token_amount_per_sale_slot as u128);
+                                        .multiply(project_info.token_amount_per_sale_slot as u128)
+                                        *(tickets_win as u128);
         let deposit_amount = env::attached_deposit();
         assert_eq!(deposit_amount,must_attach_deposit,"Must deposit {} NEAR",must_attach_deposit);
         
