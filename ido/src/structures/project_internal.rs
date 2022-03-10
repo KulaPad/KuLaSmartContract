@@ -29,8 +29,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 100, 
             },
-            current_ticket_id: 100_000,
-            status:ProjectStatus::Distribution
+            status:ProjectStatus::Distribution,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -60,8 +63,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 800, 
                 max_win_tickets_per_user: 150, 
             },
-            current_ticket_id: 250_000,
-            status:ProjectStatus::Distribution
+            status:ProjectStatus::Distribution,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -91,8 +97,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 80_000,
-            status:ProjectStatus::Rejected
+            status:ProjectStatus::Rejected,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -122,8 +131,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 80_000,
-            status:ProjectStatus::Rejected
+            status:ProjectStatus::Rejected,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -154,8 +166,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 85_000,
-            status:ProjectStatus::Distribution
+            status:ProjectStatus::Distribution,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -185,8 +200,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 100_000,
-            status:ProjectStatus::Sales
+            status:ProjectStatus::Sales,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -216,8 +234,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 70_000,
-            status:ProjectStatus::Sales
+            status:ProjectStatus::Sales,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -247,8 +268,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 300,
-            status:ProjectStatus::Whitelist
+            status:ProjectStatus::Whitelist,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -278,8 +302,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 5_000,
-            status:ProjectStatus::Whitelist
+            status:ProjectStatus::Whitelist,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -309,8 +336,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 0,
-            status:ProjectStatus::Preparation
+            status:ProjectStatus::Preparation,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 

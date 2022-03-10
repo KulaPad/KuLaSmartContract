@@ -29,7 +29,10 @@ fn get_project_1() -> ProjectInfo {
             max_staking_tickets_per_user: 300,
             max_win_tickets_per_user: 10,
         },
-        current_ticket_id: 0,
+        total_allocations: 0,
+        total_staking_tickets: 0,
+        total_social_tickets: 0,
+        total_referral_tickets: 0,
     }
 }
 

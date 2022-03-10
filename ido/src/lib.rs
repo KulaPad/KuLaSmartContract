@@ -1,41 +1,41 @@
-use near_sdk::{init, env, near_bindgen};
-use near_sdk::{PanicOnDefault, Timestamp, Balance, AccountId, CryptoHash, Promise};
+use near_sdk::{init, env, near_bindgen, ext_contract};
+use near_sdk::{PanicOnDefault, Timestamp, Balance, AccountId, CryptoHash, Promise, PromiseOrValue, PromiseResult, EpochHeight};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::collections::{UnorderedMap, UnorderedSet, LookupMap};
-use near_sdk::json_types::{U128};
+use near_sdk::json_types::{U128, U64};
 
 pub type ProjectId = u64;
+pub type TicketAmount = u32;
 
 use crate::structures::project::*;
 use crate::structures::account::*;
 use crate::structures::ticket::*;
 use crate::structures::staking::*;
 use crate::utils::*;
+use crate::staking_contract::*;
 
 mod structures;
 mod utils;
 mod tests;
+mod staking_contract;
 
 pub const DEFAULT_PAGE_SIZE: u64 = 100;
 pub const TOKEN_DECIMAL: u8 = 8;
 pub const STAKING_CONTRACT_ID: &str = "staking-kulapad.testnet";
 
+pub const GAS_FUNCTION_CALL: u64 = 5_000_000_000_000;
+pub const NO_DEPOSIT: u128 = 0;
+
 #[derive(BorshSerialize, BorshDeserialize)]
 pub enum StorageKey {
     ProjectKey,
     ProjectAccountTicketKey,
-    ProjectAccountTicketInnerKey {
-        account_id_hash: CryptoHash
-    },
+    ProjectAccountTicketInnerKey(ProjectId),
     ProjectTokenSaleKey,
-    ProjectTokenSaleInnerKey {
-        account_id_hash: CryptoHash
-    },
+    ProjectTokenSaleInnerKey(ProjectId),
     ProjectTicketKey,
-    ProjectTicketInnerKey {
-
-    },
+    ProjectTicketInnerKey(ProjectId),
     AccountProjectKey,
     AccountProjectKeyInnerKey { 
         account_id_hash: CryptoHash
@@ -118,7 +118,7 @@ impl IDOContract{
         self.owner_id = owner_id;
     }
     
-   /// Register an account for a project's whitelist
+    /// Register an account for a project's whitelist
     /// User can only register the whitelist on the whitelist period of the project
     /// Account id is env::signer_account_id()
     pub fn register_whitelist(&mut self, project_id: ProjectId) {
@@ -135,8 +135,6 @@ impl IDOContract{
         assert!(!account_projects.contains(&project_id),"Already register whitelist this project");
         account_projects.insert(&project_id);
         self.account_projects.insert(&account_id,&account_projects);
-
-
     }
 
     /// Check an account wherever registered for a project or not
@@ -168,7 +166,7 @@ impl IDOContract{
         
         // Transfer deposit Near to contract owner
         let account_tickets = self.unwrap_project_account_ticket(project_id, &account_id);
-        let tickets_win = account_tickets.win_ticket_ids.len();
+        let tickets_win = account_tickets.staking_tickets.win_ticket_ids.len();
         assert!(tickets_win>0,"Account did not win the whitelist");
 
         let must_attach_deposit = project_info.token_sale_rate
@@ -200,10 +198,10 @@ impl IDOContract{
             if let Some(account_token_sales)= account_token_sales{
                 Some(
                     JsonAccountTokenSales{
-                        funding_amount: account_token_sales.funding_amount,
-                        token_unlocked_amount: account_token_sales.token_unlocked_amount,
-                        token_locked_amount: account_token_sales.token_locked_amount,
-                        token_withdrawal_amount: account_token_sales.token_withdrawal_amount
+                        funding_amount: U128::from(account_token_sales.funding_amount),
+                        token_unlocked_amount: U128::from(account_token_sales.token_unlocked_amount),
+                        token_locked_amount: U128::from(account_token_sales.token_locked_amount),
+                        token_withdrawal_amount: U128::from(account_token_sales.token_withdrawal_amount)
                     }
                 )
             }else{
@@ -215,181 +213,42 @@ impl IDOContract{
         
     }
 
-
     /// User can claim their bought unlocked token after sales.
     pub fn claim(&mut self, project_id: ProjectId) {
 
     }
 
-    // ====> sample project go here
-
-    // ====> whitelist go here
-
-    // ====> ticket go here
-    ///
-    /// Ticket was issued:
-    /// - Right after clicking Whitelist registration btn
-    /// - UI call a fn to calculate user staking ticket
-    /// - User stake more KULA
-    /// ======> combine into only 1 fn (this fn), and be triggered by user from UI only
-    ///
-    /// Calculate ticket amount for Whitelisted users, base on:
-    /// - Staking time
-    /// - Stake amount
-    /// NOTE: Max 50 or 100 tickets for each users
-    ///
-    /// For example:
-    /// - This campaign need to raise $2M
-    /// => If $100/ticket: Sale Up to 20,000 win tickets
-    /// Normal ticket can buy up to $XXX === VIP ticket
-    ///
-    pub fn calculate_user_tickets(&mut self, project_id: ProjectId) -> JsonAccountTicketInfo {
-        // assert!("TODO", "Whitelist is closed. Can calculate during whitelist phase only");
-        // assert!("TODO", "User is not whitelisted, you must register the whitelist first");
-        // assert!("TODO", "User have not staked, you must stake at least 100KULA to be able to get the campaign tickets");
-
-
-        /**
-        Config is defined here:
-        https://docs.google.com/spreadsheets/d/1XWL2vtGIX89kGgj6M-X-ocCrQfz05fm9n4HncDrSuSU/edit#gid=778618928&range=G4
-         */
-        type TicketCount = u32;
-        struct TicketAmountConfig {
-            lock_day_count: Vec<u32>,
-            tier1: Vec<TicketCount>,
-            tier2: Vec<TicketCount>,
-            tier3: Vec<TicketCount>,
-            tier4: Vec<TicketCount>,
-        }
-        let ticketConfig = TicketAmountConfig {
-            lock_day_count: vec![7, 14, 30, 90, 180, 365],
-            tier1: vec![1, 2, 4, 8, 12, 20],
-            tier2: vec![6, 12, 24, 48, 72, 120],
-            tier3: vec![35, 70, 140, 280, 420, 700],
-            tier4: vec![1, 1, 2, 2, 3, 3],
-        };
-
-        // TODO: Get from StakingPool contract
-        let user_staking_info = UserStakingInfo {
-            tier: StakingTier::Tier1,
-            staked: 880,
-            un_staked: 20,
-            staked_at: 1644059117000000000,
-            lock_day_count: 200
-        };
-
-        // Find the suitable lock day count index
-        let mut valid_lock_day_count_idx = 0;
-        for i in 1..ticketConfig.lock_day_count.len() {
-            let max_count = ticketConfig.lock_day_count[i];
-            if user_staking_info.lock_day_count >= max_count {
-                valid_lock_day_count_idx = i
-            }
-        }
-
-        let issue_amount = match user_staking_info.tier {
-            StakingTier::Tier1 => ticketConfig.tier1[valid_lock_day_count_idx],
-            StakingTier::Tier2 => ticketConfig.tier2[valid_lock_day_count_idx],
-            StakingTier::Tier3 => ticketConfig.tier3[valid_lock_day_count_idx],
-            StakingTier::Tier4 => ticketConfig.tier4[valid_lock_day_count_idx],
-        };
-
-        // let ticket_rank: TicketRank = if user_staking_info.tier == StakingTier.Tier4 { TicketRank.Vip } else { TicketRank.Normal };
-        // let tickets = self.issue_staking_ticket(
-        //     project_id: ProjectId,
-        //     issue_amount,
-        //     ticket_rank
-        // );
-        // let ticket_ids: Vec<TicketId> = tickets.iter().map(|&t| t.id).collect::<Vec<_>>();
-        // let mut win_ticket_ids = vec![];
-        // if ticket_rank == TicketRank.Vip {
-        //     win_ticket_ids = ticket_ids.clone();
-        // }
-
-
-
-        let mut user_ticket_info = AccountTickets {
-            staking_ticket_ids: Vec::new(), //ticket_ids,
-            social_ticket_ids: vec![],
-            referral_ticket_ids: vec![],
-            win_ticket_ids: Vec::new(),
-        };
-
-        JsonAccountTicketInfo {
-            staking_tickets: user_ticket_info.staking_ticket_ids.len() as u16,
-            social_tickets: user_ticket_info.staking_ticket_ids.len() as u16,
-            referral_tickets: user_ticket_info.staking_ticket_ids.len() as u16,
-            win_tickets: user_ticket_info.staking_ticket_ids.len() as u8,
-        }
+    /// Usecase 1: Display on the right section of staking page - https://web-app-1vi.pages.dev/#/staking
+    ///  * Input: locked_amount, locked_timestamp
+    ///  * Output: TierInfo: Tier, Staking Tickets, Allocation
+    pub fn get_staking_tier_info(&self, locked_amount: U64, locked_timestamp: Timestamp) -> TierInfoJson {
+        self.internal_get_staking_tier_info(locked_amount.into(), locked_timestamp, None)
+    }
+     
+    /// Usecase 2: Display on project details
+    ///  * Input: ProjectId, AccountId
+    ///  * Output: ProjectAccountInfoJson: Project, Status, Account, WhitelistInfo, SaleInfo, DistributionInfo
+    pub fn get_project_account_info(&self, project_id: ProjectId) -> ProjectAccountInfoJson {
+        let account_id = env::signer_account_id();
+        self.internal_get_project_staking_tier_info(project_id, account_id)
     }
 
-    // /// Batch issue ticket for users
-    // /// Eg: issue ticket 100 -> 200 to to current user
-    pub fn issue_staking_ticket(&mut self, project_id: ProjectId, tickets_count: u32, rank: TicketRank) -> Vec<Ticket> {
-        let mut new_tickets: Vec<Ticket> = vec![];
+    pub fn update_staking_tickets(&mut self, project_id: ProjectId) -> PromiseOrValue<bool> {
+        let account_id = env::signer_account_id();
 
-        // take up some ticket
-        let last_ticket_id = self.last_ticket_id;
-        self.last_ticket_id = last_ticket_id + tickets_count as u64;
+        // Verify project & account before calling to staking smart contrct
+        let project = self.projects.get(&project_id);
+        if let Some(project) = project {
+            assert_project_whitelist_period(&project);
 
-
-        let user = env::signer_account_id();
-
-        // init if not exist
-        let pt = self.project_tickets.get(&project_id);
-        let mut project_tickets: LookupMap<TicketId, Ticket> = if pt.is_none() {
-            //LookupMap::new(concat!("p", project_id as String, "_tickets_"))
-            LookupMap::new(b"".to_vec())
-        } else {
-            pt.unwrap()
-        };
-
-        // init if not exist
-        let pat = self.project_account_tickets.get(&project_id);
-        let mut project_account_tickets: UnorderedMap<AccountId, AccountTickets> = if pat.is_none() {
-            //UnorderedMap::new(concat!("p", project_id, "_a", user, "_tickets_"))
-            UnorderedMap::new(b"".to_vec())
-        } else {
-            pat.unwrap()
-        };
-
-        // init if not exist
-        let at = project_account_tickets.get(&user);
-        let mut account_tickets: AccountTickets = if at.is_none() {
-            AccountTickets {
-                staking_ticket_ids: vec![],
-                social_ticket_ids: vec![],
-                referral_ticket_ids: vec![],
-                win_ticket_ids: vec![],
-            }
-        } else {
-            at.unwrap()
-        };
-
-
-        // issue ticket
-        for i in last_ticket_id + 1..last_ticket_id + tickets_count as u64 + 1 {
-            let ticket = Ticket {
-                id: i,
-                account_id: user.clone(),
-                ticket_type: TicketType::Staking,
-                //rank: rank,
-                rank: TicketRank::Normal,
-            };
-            //new_tickets.push(ticket);
-            project_tickets.insert(&i, &ticket);
-            account_tickets.staking_ticket_ids.push(i);
-        };
-
-
-        // stored
-        project_account_tickets.insert(&user, &account_tickets);
-        self.project_account_tickets.insert(&project_id, &project_account_tickets);
-        self.project_tickets.insert(&project_id, &project_tickets);
-
-
-        new_tickets
+            // Start processing
+            return self.internal_update_staking_tickets(project_id, account_id);
+        }
+        
+        panic_project_not_exist();
+        PromiseOrValue::Value(false)
     }
+
 
     pub fn get_user_tickets(&self) -> AccountId {
         self.owner_id.clone()
@@ -413,7 +272,4 @@ impl IDOContract{
         self.owner_id.clone()
     }
 
-    // ====> buy token go here
-
-    // ====> token vesting (claim) go here
 }

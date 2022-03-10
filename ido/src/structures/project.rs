@@ -17,6 +17,10 @@ pub enum ProjectStatus {
     Distribution,
 }
 
+impl Default for ProjectStatus {
+    fn default() -> Self { ProjectStatus::Preparation }
+}
+
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct Rate {
     numberator: u64,
@@ -74,8 +78,12 @@ pub struct ProjectInfo {
     pub total_fund_received: Balance,
     pub sale_type: SaleType,
     pub configuration: ProjectConfiguration,
-    pub current_ticket_id: TicketId,
     pub status: ProjectStatus,
+    /// Fixed allocations for account that is Tier 4
+    pub total_allocations: TicketAmount,
+    pub total_staking_tickets: TicketAmount,
+    pub total_social_tickets: TicketAmount,
+    pub total_referral_tickets: TicketAmount,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
@@ -109,8 +117,17 @@ pub struct ProjectInfoJson {
     pub whitelist_accounts: u16,
     pub configuration: ProjectConfiguration,
 }
-impl ProjectInfo {
 
+impl ProjectInfo {
+    pub(crate) fn is_in_whitelist_period(&self) -> bool {
+        let current_time = get_current_time();
+        self.status == ProjectStatus::Whitelist && self.whitelist_start_date <= current_time && current_time <= self.whitelist_end_date
+    }
+
+    pub(crate) fn is_in_sale_period(&self) -> bool {
+        let current_time = get_current_time();
+        self.status == ProjectStatus::Sales && self.sale_start_date <= current_time && current_time <= self.sale_end_date
+    }
 }
 
 #[near_bindgen]
@@ -121,12 +138,26 @@ impl IDOContract{
 
         // Insert the project
         self.projects.insert(&project_id, &project_info);
+
+        // Insert this project to related variables, this should be done by each status
+        self.project_account_tickets.insert(&project_id, &UnorderedMap::new(get_storage_key(StorageKey::ProjectAccountTicketInnerKey(project_id)))); 
+        self.project_account_token_sales.insert(&project_id, &UnorderedMap::new(get_storage_key(StorageKey::ProjectTokenSaleInnerKey(project_id)))); 
+        self.project_tickets.insert(&project_id, &LookupMap::new(get_storage_key(StorageKey::ProjectTicketInnerKey(project_id)))); 
     }
 
     pub fn get_project(&self, project_id: ProjectId) -> Option<ProjectInfoJson> {
         let project = self.projects.get(&project_id);
 
         self.internal_get_project(project_id, project)
+    }
+
+    pub fn get_project_or_panic(&self, project_id: ProjectId) -> ProjectInfo {
+        let project = self.projects.get(&project_id);
+        if let Some(project) = project {
+            project
+        } else {
+            panic!("Project does not exist.");
+        }
     }
 
     pub fn get_projects(&self, status: Option<ProjectStatus>, from_index: Option<u64>, limit: Option<u64>) -> Vec<ProjectInfoJson>{
@@ -167,5 +198,9 @@ impl IDOContract{
         } else {
             None
         }
+    }
+
+    pub(crate) fn internal_has_project(&self, project_id: ProjectId) -> bool{
+        self.projects.get(&project_id).is_some()
     }
 }

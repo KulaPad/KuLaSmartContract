@@ -13,12 +13,17 @@ pub struct UserStakingInfo {
     pub lock_day_count: u32,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug)]
 pub enum StakingTier {
+    Tier0,
     Tier1,
     Tier2,
     Tier3,
     Tier4,
+}
+
+impl Default for StakingTier {
+    fn default() -> Self { StakingTier::Tier0 }
 }
 
 #[derive(BorshSerialize, BorshDeserialize)]
@@ -96,4 +101,145 @@ pub(crate) fn initialize_tiers(token_decimal: u8) -> UnorderedMap<StakingTier, T
     env::log(format!("Tiers initialized.").as_bytes());
 
     tiers
+}
+
+#[derive(Serialize, Deserialize)]
+/// Stores the information of an account
+/// The tier is from Tier1 to Tier4, if the locked amount is less than Tier1, it would be Tier0
+/// The no_of_staking_tickets is the number of staking tickets of current tier with a number of locked days.
+/// The no_of_allocations is user for Tier4 only. This is the number of allocation that users can have a ido buy slot.
+pub struct TierInfoJson {
+    pub tier: StakingTier,
+    pub locked_amount: U64,
+    pub locked_days: u32,
+    pub calculating_time: Timestamp,
+    pub no_of_staking_tickets: TicketAmount,
+    pub no_of_allocations: TicketAmount,
+}
+
+impl Default for TierInfoJson {
+    fn default() -> Self {
+        Self {
+            tier: StakingTier::default(),
+            locked_amount: U64::from(0),
+            locked_days: 0,
+            calculating_time: 0,
+            no_of_staking_tickets: 0,
+            no_of_allocations: 0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct ProjectWhitelistInfo {
+    pub tier: StakingTier,
+    pub no_of_staking_tickets: TicketAmount,
+    pub no_of_social_tickets: TicketAmount,
+    pub no_of_referral_tickets: TicketAmount,
+    pub no_of_allocations: TicketAmount,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct ProjectDistributionInfo {
+    
+}
+
+/// Preparation                 -> AccountId, ProjectId, ProjectStatus
+/// Whitelist (+ Registered)    -> [Fields in Preparation] + Staking Tier, tickets (staking, social, referral), allocations
+/// Sales                       -> [Fields in Whitelist] + 
+/// Distribution                -> Ticket + Fund + Token
+/// Other statuses              -> Panic
+#[derive(Serialize, Deserialize, Default)]
+pub struct ProjectAccountInfoJson {
+    pub account_id: AccountId,
+    pub project_id: ProjectId,
+    pub project_status: ProjectStatus,
+    pub whitelist_info: Option<ProjectWhitelistInfo>,
+    pub sale_info: Option<JsonAccountTokenSales>,
+}
+
+impl ProjectAccountInfoJson {
+    pub fn new(account_id: AccountId, project_id: ProjectId, project_status: ProjectStatus) -> Self {
+        Self {
+            account_id,
+            project_id,
+            project_status,
+            whitelist_info: None,
+            sale_info: None,
+        }
+    }
+}
+
+#[near_bindgen]
+impl IDOContract {
+    pub(crate) fn internal_get_staking_tier_info(&self, locked_amount: u64, locked_timestamp: Timestamp, calculating_timestamp: Option<Timestamp>) -> TierInfoJson {
+        let calculating_timestamp = calculating_timestamp.unwrap_or(env::block_timestamp());
+        
+        // Step 1: Use locked_amount to identify staking tier
+        // IDOContract.tiers is stored TierConfiguration
+        // Refer the initializing function initialize_tiers
+        // Or the sheet https://docs.google.com/spreadsheets/d/1XWL2vtGIX89kGgj6M-X-ocCrQfz05fm9n4HncDrSuSU/edit#gid=778618928
+
+        // If the locked amount is less than Tier1.locked_amount (TierInfo), return the default of TierInfoJson with Tier0.
+
+        // Step 2: Calculating the number of day between calculating_timestamp (Project.whitelist_start_date) and locked_timestamp.
+
+        // Step 3: Using calculating day (Ex: 30 days) to identify the number of staking tickets & the number of allocation (For Tier4 only)
+
+        // Step 4: Return data
+        // tier: StakingTier,
+        // locked_amount: U64,
+        // locked_days: u32,
+        // calculating_time: Timestamp,
+        // no_of_staking_tickets: TicketAmount,
+        // no_of_allocations: TicketAmount,
+        TierInfoJson::default()
+    }
+
+    pub(crate) fn internal_get_project_staking_tier_info(&self, project_id: ProjectId, account_id: AccountId) -> ProjectAccountInfoJson {
+        // Validating
+        // Project must be existed
+        let project = self.get_project_or_panic(project_id);
+        
+        let mut result = ProjectAccountInfoJson::new(account_id.clone(), project_id, project.status);
+
+        // Project's status is in Whitelist, Sale, Distribution
+
+        // Status: Whitelist -> User must be registered whitelist
+        
+        // List of account of this project
+        let account_tickets = self.project_account_tickets.get(&project_id).unwrap();
+
+        // Ticket information of this account
+        let ticket_info = account_tickets.get(&account_id).unwrap();
+
+        // ProjectWhitelistInfo
+        //     tier: StakingTier,
+        //     no_of_staking_tickets: TicketAmount,
+        //     no_of_social_tickets: TicketAmount,
+        //     no_of_referral_tickets: TicketAmount,
+        //     no_of_allocations: TicketAmount,
+        let mut whitelist_info = ProjectWhitelistInfo::default();
+
+        // Get from self.project_account_tickets. Project -> Account -> Tickets
+        // Tickets: staking_tier, staking_tickets.eligible_tickets, allocations, social_tickets.eligible_tickets, referral_tickets.eligible_tickets
+
+        result.whitelist_info = Some(whitelist_info);
+
+        // Status: Sales
+        // JsonAccountTicketInfo {
+        //     funding_amount: U128,
+        //     token_unlocked_amount: U128,
+        //     token_locked_amount: U128,
+        //     token_withdrawal_amount: U128,
+        
+        // Get from self.project_account_token_sales. Project -> Account -> AccountTokenSales
+        // Token Sales: funding_amount, token_unlocked_amount, allocations, token_locked_amount, token_withdrawal_amount
+
+        // Status: Distribution
+
+
+        // Return data
+        result
+    }
 }
