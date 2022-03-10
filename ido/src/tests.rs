@@ -10,3 +10,5 @@ pub mod test_whitelist;
 
 #[cfg(test)]
 pub mod test_buytoken;
+
+pub mod test_full_flow;

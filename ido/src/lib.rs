@@ -7,6 +7,12 @@ use near_sdk::json_types::{U128, U64};
 
 pub type ProjectId = u64;
 pub type TicketAmount = u32;
+pub type TicketNumber = u64;
+pub type TicketId = String;
+pub type AccountTicketsType = UnorderedMap<AccountId, AccountTickets>;
+pub type AccountTokenSalesType = UnorderedMap<AccountId, AccountTokenSales>;
+pub type ProjectTicketType = LookupMap<TicketId, AccountId>;
+pub type AccountProjectType = UnorderedSet<ProjectId>;
 
 use crate::structures::project::*;
 use crate::structures::account::*;
@@ -58,24 +64,19 @@ pub struct IDOContract{
     pub projects: UnorderedMap<ProjectId, ProjectInfo>,
 
     /// Stores the list of tickets that belongs to the specific account for each project.
-    ///
     /// The user tickets info was re-calculated every time user access the UI, trigger the calculate_user_tickets()
-    pub project_account_tickets: LookupMap<ProjectId, UnorderedMap<AccountId, AccountTickets>>,
+    pub project_account_tickets: LookupMap<ProjectId, AccountTicketsType>,
 
     /// Stores the list of token sales of an account in each project.
-    pub project_account_token_sales: LookupMap<ProjectId, UnorderedMap<AccountId, AccountTokenSales>>,
+    pub project_account_token_sales: LookupMap<ProjectId, AccountTokenSalesType>,
 
     /// Stores the list of tickets that belongs to each project.
     /// Ex: Project 1: Tickets [{Id: 1, Type: Staking, Account Id: account1.testnet }, {Id: 2, Type: Social, Account Id: account2.testnet }, ...]
-    ///
     /// The user tickets were stored here during re-calculate
-    pub project_tickets: LookupMap<ProjectId, LookupMap<TicketId, Ticket>>,
+    pub project_tickets: LookupMap<ProjectId, ProjectTicketType>,
 
     /// The list of projects that that account has registered whitelist.
-    pub account_projects: LookupMap<AccountId, UnorderedSet<ProjectId>>,
-
-    /// Last increment ticket id
-    pub last_ticket_id: TicketId,
+    pub account_projects: LookupMap<AccountId, AccountProjectType>,
 
     /// The information of tiers that helps to identify the number of tickets to allocation to a specific user when they joined to a project
     pub tiers: UnorderedMap<StakingTier, TierInfo>,
@@ -95,7 +96,6 @@ impl IDOContract{
             project_tickets: LookupMap::new(get_storage_key(StorageKey::ProjectTicketKey)),
             account_projects: LookupMap::new(get_storage_key(StorageKey::AccountProjectKey)),
             tiers: initialize_tiers(TOKEN_DECIMAL),
-            last_ticket_id: 0,
         }
     }
 
@@ -249,6 +249,41 @@ impl IDOContract{
         PromiseOrValue::Value(false)
     }
 
+    pub fn close_project_whitelist(&mut self, project_id: ProjectId) {
+        // Get project
+        let mut project = self.get_project_or_panic(project_id);
+        let current_time = get_current_time();
+
+        // Validate & update status to Sale
+        assert!(project.status == ProjectStatus::Whitelist && project.whitelist_end_date <= current_time, "The project's status is not correct or the whitelist period is not end.");
+
+        
+        // Random list of tickets
+        let tickets = self.get_project_ticket_or_panic(project_id);
+        let mut account_tickets = self.get_project_account_ticket_or_panic(project_id);
+        let no_of_win_tickets = std::cmp::min(project.total_staking_tickets, project.get_available_sales_slots() as u64);
+
+        for i in 0..no_of_win_tickets {
+            let ticket_number = i + 1;
+            let ticket_id = build_ticket_id(TicketType::Staking, ticket_number);
+            
+            let account_id = tickets.get(&ticket_id);
+            if let Some(account_id) = account_id {
+                let account = account_tickets.get(&account_id);
+                if let Some(mut account) = account {
+                    if account.staking_tickets.ticket_ids.contains(&ticket_number) {
+                        account.staking_tickets.win_ticket_ids.push(ticket_number);
+
+                        account_tickets.insert(&account_id, &account);
+                        self.project_account_tickets.insert(&project_id, &account_tickets);
+                    }
+                }
+            }
+        }
+
+        project.status = ProjectStatus::Sales;
+        self.projects.insert(&project_id, &project);
+    }
 
     pub fn get_user_tickets(&self) -> AccountId {
         self.owner_id.clone()

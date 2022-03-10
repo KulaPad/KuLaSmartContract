@@ -1,18 +1,17 @@
 use crate::*;
 
-
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
-pub struct Ticket {
-    pub id: TicketId,
-    pub account_id: AccountId,
-    pub ticket_type: TicketType,
-}
-
-pub type TicketId = u64;
-
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub enum TicketType {
     Staking,
     Social,
     Referral,
+}
+
+pub fn build_ticket_id(ticket_type: TicketType, ticket_numer: TicketNumber) -> String {
+    let prefix = match ticket_type {
+        TicketType::Staking => "L",
+        TicketType::Social => "S",
+        TicketType::Referral => "R",
+    };
+    format!("{}{}", prefix, ticket_numer)
 }
