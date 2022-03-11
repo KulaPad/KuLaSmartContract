@@ -82,7 +82,7 @@ impl IDOContract{
         account_projects
     }
 
-    pub fn unwrap_project_account_token_sales(&self, account_id: &AccountId, project_id: ProjectId) 
+    pub fn unwrap_project_account_token_sales(&self, project_id: ProjectId) 
             -> UnorderedMap<AccountId, AccountTokenSales> {
         self.assert_project_exist(project_id);
         let project_account_token_sales = self.project_account_token_sales.get(&project_id).unwrap();
