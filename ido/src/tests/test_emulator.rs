@@ -41,4 +41,19 @@ impl Emulator {
             "Print something here"
         );
     }
+
+    pub fn update_block_timestamp(&mut self, timestamp: Timestamp) {
+        self.context.block_timestamp = timestamp;
+
+        testing_env!(self.context.clone());
+    }
+
+    /// Keep the remaining properties the same.
+    pub fn update_account_id_and_desposit(&mut self, predecessor_account_id: String, signer_account_id:String, deposit: Balance) {
+        self.context.predecessor_account_id = predecessor_account_id;
+        self.context.signer_account_id = signer_account_id;
+        self.context.attached_deposit = deposit;
+        
+        testing_env!(self.context.clone());
+    }
 }

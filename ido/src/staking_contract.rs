@@ -63,7 +63,7 @@ impl IDOContract {
         }
     }
 
-    fn process_update_staking_tickets(&mut self, project_id: ProjectId, account_id: AccountId, staking_account_info: AccountJson) -> bool {
+    pub(crate) fn process_update_staking_tickets(&mut self, project_id: ProjectId, account_id: AccountId, staking_account_info: AccountJson) -> bool {
         // Verify staking_info.account_id vs account_id 
         assert_eq!(account_id.clone(), staking_account_info.account_id, "The staking account is not equal to current account id.");
 

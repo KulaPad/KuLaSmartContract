@@ -6,7 +6,7 @@ pub enum SaleType {
     Vested
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug,PartialEq)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ProjectStatus {
     Proposed,
     Approved,
@@ -140,7 +140,7 @@ impl ProjectInfo {
 
 #[near_bindgen]
 impl IDOContract{
-    pub fn create_project(&mut self, project_info: ProjectInfo) {
+    pub fn create_project(&mut self, project_info: ProjectInfo) -> ProjectId{
         // Get next Id
         let project_id = self.projects.len() + 1;
 
@@ -150,7 +150,9 @@ impl IDOContract{
         // Insert this project to related variables, this should be done by each status
         self.project_account_tickets.insert(&project_id, &UnorderedMap::new(get_storage_key(StorageKey::ProjectAccountTicketInnerKey(project_id)))); 
         self.project_account_token_sales.insert(&project_id, &UnorderedMap::new(get_storage_key(StorageKey::ProjectTokenSaleInnerKey(project_id)))); 
-        self.project_tickets.insert(&project_id, &LookupMap::new(get_storage_key(StorageKey::ProjectTicketInnerKey(project_id)))); 
+        self.project_tickets.insert(&project_id, &UnorderedMap::new(get_storage_key(StorageKey::ProjectTicketInnerKey(project_id)))); 
+        
+        project_id
     }
 
     pub fn get_project(&self, project_id: ProjectId) -> Option<ProjectInfoJson> {

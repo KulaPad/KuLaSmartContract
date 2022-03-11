@@ -11,7 +11,7 @@ pub type TicketNumber = u64;
 pub type TicketId = String;
 pub type AccountTicketsType = UnorderedMap<AccountId, AccountTickets>;
 pub type AccountTokenSalesType = UnorderedMap<AccountId, AccountTokenSales>;
-pub type ProjectTicketType = LookupMap<TicketId, AccountId>;
+pub type ProjectTicketType = UnorderedMap<TicketId, AccountId>;
 pub type AccountProjectType = UnorderedSet<ProjectId>;
 
 use crate::structures::project::*;
@@ -74,7 +74,7 @@ pub struct IDOContract{
     /// Ex: Project 1: Tickets [{Id: 1, Type: Staking, Account Id: account1.testnet }, {Id: 2, Type: Social, Account Id: account2.testnet }, ...]
     /// The user tickets were stored here during re-calculate
     pub project_tickets: LookupMap<ProjectId, ProjectTicketType>,
-
+    
     /// The list of projects that that account has registered whitelist.
     pub account_projects: LookupMap<AccountId, AccountProjectType>,
 
@@ -139,13 +139,18 @@ impl IDOContract{
 
     /// Check an account wherever registered for a project or not
     pub fn is_whitelist(&self, project_id: ProjectId) -> bool {
+
+        self.assert_project_exist(project_id);
+
         let account_id = env::signer_account_id();
-        let account_projects = self.account_projects
-                                    .get(&account_id)
-                                    .expect("Project not found");
-        if account_projects.contains(&project_id){
-            return true;
+        let projects_in_account = self.account_projects.get(&account_id);
+
+        if let Some(projects_in_account) = projects_in_account {
+            if projects_in_account.contains(&project_id){
+                return true;
+            }
         }
+        
         false
     }
 
