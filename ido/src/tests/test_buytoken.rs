@@ -1,6 +1,7 @@
 use crate::tests::test_emulator::*;
 use crate::tests::test_utils::*;
 use crate::structures::account::*;
+use near_sdk::json_types::U128;
 
 #[test]
 fn test_buy_token() {
@@ -13,10 +14,10 @@ fn test_buy_token() {
     emulator.contract.buy_token(7);
     
     let json_account_token_sales = JsonAccountTokenSales{
-        funding_amount: 15_000_000_000_000_000_000_000_000,
-        token_unlocked_amount:0,
-        token_locked_amount: 0,
-        token_withdrawal_amount:0,
+        funding_amount: U128::from(15_000_000_000_000_000_000_000_000),
+        token_unlocked_amount: U128::from(0),
+        token_locked_amount: U128::from(0),
+        token_withdrawal_amount: U128::from(0),
     };
     assert_eq!(Some(json_account_token_sales),emulator.contract.get_account_token_sale_info(7));
 

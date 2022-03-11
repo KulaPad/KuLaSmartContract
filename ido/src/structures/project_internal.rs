@@ -29,8 +29,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 100, 
             },
-            current_ticket_id: 100_000,
-            status:ProjectStatus::Distribution
+            status:ProjectStatus::Distribution,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -60,8 +63,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 800, 
                 max_win_tickets_per_user: 150, 
             },
-            current_ticket_id: 250_000,
-            status:ProjectStatus::Distribution
+            status:ProjectStatus::Distribution,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -91,8 +97,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 80_000,
-            status:ProjectStatus::Rejected
+            status:ProjectStatus::Rejected,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -122,8 +131,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 80_000,
-            status:ProjectStatus::Rejected
+            status:ProjectStatus::Rejected,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -154,8 +166,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 85_000,
-            status:ProjectStatus::Distribution
+            status:ProjectStatus::Distribution,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -167,10 +182,10 @@ impl IDOContract{
             description: "A robust turnkey stablecoin issuance platform built for the multi-chain universe.".to_string(),
             introduction:"Near's Stablecoin".to_string(),
             categories: vec!["Stablecoin".to_string(),"DeFi".to_string()],
-            whitelist_start_date: 1648353602000000000,
-            whitelist_end_date: 1648612802000000000,
-            sale_start_date: 1648612802000000000,
-            sale_end_date: 1648785602000000000,
+            whitelist_start_date: 1646353602000000000,
+            whitelist_end_date: 1646412802000000000,
+            sale_start_date: 1646467201000000000,
+            sale_end_date: 1647244801000000000,
             token_contract_id: "contract.oin_finance.near".to_string(),
             token_symbol:"OIN".to_string(),
             token_decimal: 8,
@@ -185,8 +200,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 100_000,
-            status:ProjectStatus::Sales
+            status:ProjectStatus::Sales,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -198,10 +216,10 @@ impl IDOContract{
             description: "See NFT digital card collectibles and creations from paras.near.".to_string(),
             introduction:"NFT Marketplace.".to_string(),
             categories: vec!["NFT".to_string()],
-            whitelist_start_date: 1649131204000000000,
-            whitelist_end_date: 1649390404000000000,
-            sale_start_date: 1649390404000000000,
-            sale_end_date: 1649736004000000000,
+            whitelist_start_date: 1646131204000000000,
+            whitelist_end_date: 1646390404000000000,
+            sale_start_date: 1646531204000000000,
+            sale_end_date: 1647374401000000000,
             token_contract_id: "contract.paras.near".to_string(),
             token_symbol:"PARAS".to_string(),
             token_decimal: 8,
@@ -216,8 +234,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 70_000,
-            status:ProjectStatus::Sales
+            status:ProjectStatus::Sales,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -229,10 +250,10 @@ impl IDOContract{
             description: "Noncustodial lending and borrowing haven on Aurora".to_string(),
             introduction:"Near lending&borrowing platform".to_string(),
             categories: vec!["Lending".to_string(),"DeFi".to_string()],
-            whitelist_start_date: 1649131204000000000,
-            whitelist_end_date: 1649390404000000000,
-            sale_start_date: 1649390404000000000,
-            sale_end_date: 1649736004000000000,
+            whitelist_start_date: 1646510401000000000,
+            whitelist_end_date: 1647360592000000000,
+            sale_start_date: 1647374401000000000,
+            sale_end_date: 1647633601000000000,
             token_contract_id: "contract.aurigami.near".to_string(),
             token_symbol:"AURI".to_string(),
             token_decimal: 8,
@@ -247,8 +268,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 300,
-            status:ProjectStatus::Whitelist
+            status:ProjectStatus::Whitelist,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -260,10 +284,10 @@ impl IDOContract{
             description: "Create your Metaverse with Reality Chain".to_string(),
             introduction:"Multi-chain, multi-engine, Metaverse-as-a-Service.".to_string(),
             categories: vec!["GameFi".to_string(),"Metaverse".to_string()],
-            whitelist_start_date: 1649221201000000000,
-            whitelist_end_date: 1649480401000000000,
-            sale_start_date: 1649480401000000000,
-            sale_end_date: 1649739601000000000,
+            whitelist_start_date: 1646510401000000000,
+            whitelist_end_date: 1647360592000000000,
+            sale_start_date: 1647374401000000000,
+            sale_end_date: 1647633601000000000,
             token_contract_id: "contract.reality_chain.near".to_string(),
             token_symbol:"REAL".to_string(),
             token_decimal: 8,
@@ -278,8 +302,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 5_000,
-            status:ProjectStatus::Whitelist
+            status:ProjectStatus::Whitelist,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
@@ -291,8 +318,8 @@ impl IDOContract{
             description: "A product that helps Ethereum users and dApps to easily move to the NEAR blockchain. ".to_string(),
             introduction:"Near&Ethereum bridge".to_string(),
             categories: vec![],
-            whitelist_start_date: 1649566801000000000,
-            whitelist_end_date: 1649826001000000000,
+            whitelist_start_date: 1647374401000000000,
+            whitelist_end_date: 1647892801000000000,
             sale_start_date: 1649826001000000000,
             sale_end_date: 1650085201000000000,
             token_contract_id: "contract.aurora.near".to_string(),
@@ -309,8 +336,11 @@ impl IDOContract{
                 max_staking_tickets_per_user: 500, 
                 max_win_tickets_per_user: 250, 
             },
-            current_ticket_id: 0,
-            status:ProjectStatus::Preparation
+            status:ProjectStatus::Preparation,
+            total_allocations: 0,
+            total_staking_tickets: 0,
+            total_social_tickets: 0,
+            total_referral_tickets: 0,
         }
     }
 
