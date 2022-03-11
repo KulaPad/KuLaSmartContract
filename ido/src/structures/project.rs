@@ -6,7 +6,7 @@ pub enum SaleType {
     Vested
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug,PartialEq)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug,PartialEq,Clone)]
 pub enum ProjectStatus {
     Proposed,
     Approved,

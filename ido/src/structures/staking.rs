@@ -231,46 +231,84 @@ impl IDOContract {
     pub(crate) fn internal_get_project_staking_tier_info(&self, project_id: ProjectId, account_id: AccountId) -> ProjectAccountInfoJson {
         // Validating
         // Project must be existed
-        let project = self.get_project_or_panic(project_id);
+        let project = &self.get_project_or_panic(project_id);
         
-        let mut result = ProjectAccountInfoJson::new(account_id.clone(), project_id, project.status);
+        let mut result = ProjectAccountInfoJson::new(account_id.clone(), project_id, project.status.clone());
+
 
         // Project's status is in Whitelist, Sale, Distribution
-
-        // Status: Whitelist -> User must be registered whitelist
         
-        // List of account of this project
-        let account_tickets = self.project_account_tickets.get(&project_id).unwrap();
+        match project.status{
 
-        // Ticket information of this account
-        let ticket_info = account_tickets.get(&account_id).unwrap();
+            // Status: Whitelist -> User must be registered whitelist
+            ProjectStatus:: Whitelist =>{    
+                    // Ticket information of this account
+                    let ticket_info = self.unwrap_project_account_ticket(project_id,&account_id);
 
-        // ProjectWhitelistInfo
-        //     tier: StakingTier,
-        //     no_of_staking_tickets: TicketAmount,
-        //     no_of_social_tickets: TicketAmount,
-        //     no_of_referral_tickets: TicketAmount,
-        //     no_of_allocations: TicketAmount,
-        let mut whitelist_info = ProjectWhitelistInfo::default();
+                    // ProjectWhitelistInfo
+                    //     tier: StakingTier,
+                    //     no_of_staking_tickets: TicketAmount,
+                    //     no_of_social_tickets: TicketAmount,
+                    //     no_of_referral_tickets: TicketAmount,
+                    //     no_of_allocations: TicketAmount,
+                    let mut whitelist_info = ProjectWhitelistInfo::default();
 
-        // Get from self.project_account_tickets. Project -> Account -> Tickets
-        // Tickets: staking_tier, staking_tickets.eligible_tickets, allocations, social_tickets.eligible_tickets, referral_tickets.eligible_tickets
+                    // Get from self.project_account_tickets. Project -> Account -> Tickets
+                    // Tickets: staking_tier, staking_tickets.eligible_tickets, allocations, social_tickets.eligible_tickets, referral_tickets.eligible_tickets
 
-        result.whitelist_info = Some(whitelist_info);
+                    whitelist_info.tier = ticket_info.staking_tier;
+                    whitelist_info.no_of_staking_tickets = ticket_info.staking_tickets.eligible_tickets;
+                    whitelist_info.no_of_social_tickets = ticket_info.social_tickets.eligible_tickets;
+                    whitelist_info.no_of_referral_tickets = ticket_info.referral_tickets.eligible_tickets;
+                    whitelist_info.no_of_allocations = ticket_info.allocations;
 
-        // Status: Sales
-        // JsonAccountTicketInfo {
-        //     funding_amount: U128,
-        //     token_unlocked_amount: U128,
-        //     token_locked_amount: U128,
-        //     token_withdrawal_amount: U128,
+                    result.whitelist_info = Some(whitelist_info);
+                    result.sale_info = None;
+            },
+
+            // Status: Sales
+            // JsonAccountTokenSales {
+            //     funding_amount: U128,
+            //     token_unlocked_amount: U128,
+            //     token_locked_amount: U128,
+            //     token_withdrawal_amount: U128,
+            ProjectStatus:: Sales =>
+            {    
+                    // Get from self.project_account_token_sales. Project -> Account -> AccountTokenSales
+                    // Token Sales: funding_amount, token_unlocked_amount, allocations, token_locked_amount, token_withdrawal_amount
+                    
+                    let account_token_sales = self.unwrap_project_account_token_sales(project_id);
+                    let sale_info = account_token_sales.get(&account_id).expect("Account id are allow buy token");
+
+
+                    result.whitelist_info = None; 
+                    result.sale_info = Some(
+                        JsonAccountTokenSales{
+                            funding_amount: U128(sale_info.funding_amount),
+                            token_unlocked_amount: U128(sale_info.token_unlocked_amount),
+                            token_locked_amount: U128(sale_info.token_locked_amount),
+                            token_withdrawal_amount:U128(sale_info.token_withdrawal_amount),
+                        }
+                    )
+            },
         
-        // Get from self.project_account_token_sales. Project -> Account -> AccountTokenSales
-        // Token Sales: funding_amount, token_unlocked_amount, allocations, token_locked_amount, token_withdrawal_amount
 
-        // Status: Distribution
+            // Status: Distribution
+            ProjectStatus::Distribution =>
+            {
+
+            } ,
+
+            _ => 
+            {
+                
+            }
 
 
+        }
+
+
+        result.project_status = project.status.clone();
         // Return data
         result
     }

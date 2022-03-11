@@ -162,7 +162,7 @@ impl IDOContract{
                 &&(project_info.sale_end_date >= current_time),
                 "Project isn't on sale time");
         let account_id = env::signer_account_id();
-        let mut project_account_token_sales = self.unwrap_project_account_token_sales(&account_id, project_id);         
+        let mut project_account_token_sales = self.unwrap_project_account_token_sales(project_id);         
         
         // Transfer deposit Near to contract owner
         let account_tickets = self.unwrap_project_account_ticket(project_id, &account_id);
