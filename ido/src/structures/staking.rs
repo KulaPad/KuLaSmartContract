@@ -240,39 +240,27 @@ impl IDOContract {
         
         match project.status{
 
+            // Status: Preparation -> Return nothing
+            ProjectStatus::Preparation =>{
+                result.whitelist_info = None; 
+                result.sale_info = None;
+            },
+
             // Status: Whitelist -> User must be registered whitelist
             ProjectStatus:: Whitelist =>{    
-                    // Ticket information of this account
-                    let ticket_info = self.unwrap_project_account_ticket(project_id,&account_id);
-
-                    // ProjectWhitelistInfo
-                    //     tier: StakingTier,
-                    //     no_of_staking_tickets: TicketAmount,
-                    //     no_of_social_tickets: TicketAmount,
-                    //     no_of_referral_tickets: TicketAmount,
-                    //     no_of_allocations: TicketAmount,
-                    let mut whitelist_info = ProjectWhitelistInfo::default();
-
-                    // Get from self.project_account_tickets. Project -> Account -> Tickets
-                    // Tickets: staking_tier, staking_tickets.eligible_tickets, allocations, social_tickets.eligible_tickets, referral_tickets.eligible_tickets
-
-                    whitelist_info.tier = ticket_info.staking_tier;
-                    whitelist_info.no_of_staking_tickets = ticket_info.staking_tickets.eligible_tickets;
-                    whitelist_info.no_of_social_tickets = ticket_info.social_tickets.eligible_tickets;
-                    whitelist_info.no_of_referral_tickets = ticket_info.referral_tickets.eligible_tickets;
-                    whitelist_info.no_of_allocations = ticket_info.allocations;
-
-                    result.whitelist_info = Some(whitelist_info);
-                    result.sale_info = None;
+                let whitelist_info = self.get_white_list_info(project_id, &account_id); 
+                result.whitelist_info = Some(whitelist_info);
+                result.sale_info = None;
             },
 
             // Status: Sales
+            // Status: Distribution
             // JsonAccountTokenSales {
             //     funding_amount: U128,
             //     token_unlocked_amount: U128,
             //     token_locked_amount: U128,
             //     token_withdrawal_amount: U128,
-            ProjectStatus:: Sales =>
+            ProjectStatus:: Sales| ProjectStatus::Distribution  =>
             {    
                     // Get from self.project_account_token_sales. Project -> Account -> AccountTokenSales
                     // Token Sales: funding_amount, token_unlocked_amount, allocations, token_locked_amount, token_withdrawal_amount
@@ -280,8 +268,9 @@ impl IDOContract {
                     let account_token_sales = self.unwrap_project_account_token_sales(project_id);
                     let sale_info = account_token_sales.get(&account_id).expect("Account id are allow buy token");
 
+                    let whitelist_info = self.get_white_list_info(project_id, &account_id); 
 
-                    result.whitelist_info = None; 
+                    result.whitelist_info = Some(whitelist_info); 
                     result.sale_info = Some(
                         JsonAccountTokenSales{
                             funding_amount: U128(sale_info.funding_amount),
@@ -293,11 +282,7 @@ impl IDOContract {
             },
         
 
-            // Status: Distribution
-            ProjectStatus::Distribution =>
-            {
-
-            } ,
+            
 
             _ => 
             {
@@ -311,5 +296,29 @@ impl IDOContract {
         result.project_status = project.status.clone();
         // Return data
         result
+    }
+
+    pub fn get_white_list_info(&self, project_id: ProjectId, account_id: &AccountId)-> ProjectWhitelistInfo{
+        // Ticket information of this account
+        let ticket_info = self.unwrap_project_account_ticket(project_id,&account_id);
+
+        // ProjectWhitelistInfo
+        //     tier: StakingTier,
+        //     no_of_staking_tickets: TicketAmount,
+        //     no_of_social_tickets: TicketAmount,
+        //     no_of_referral_tickets: TicketAmount,
+        //     no_of_allocations: TicketAmount,
+        let mut whitelist_info = ProjectWhitelistInfo::default();
+
+        // Get from self.project_account_tickets. Project -> Account -> Tickets
+        // Tickets: staking_tier, staking_tickets.eligible_tickets, allocations, social_tickets.eligible_tickets, referral_tickets.eligible_tickets
+
+        whitelist_info.tier = ticket_info.staking_tier;
+        whitelist_info.no_of_staking_tickets = ticket_info.staking_tickets.eligible_tickets;
+        whitelist_info.no_of_social_tickets = ticket_info.social_tickets.eligible_tickets;
+        whitelist_info.no_of_referral_tickets = ticket_info.referral_tickets.eligible_tickets;
+        whitelist_info.no_of_allocations = ticket_info.allocations;
+
+        whitelist_info
     }
 }
