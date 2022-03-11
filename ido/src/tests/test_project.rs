@@ -1,8 +1,9 @@
 use crate::tests::test_utils::*;
 use crate::tests::test_emulator::*;
 use crate::structures::project::*;
+use near_sdk::{Timestamp};
 
-fn get_project_1() -> ProjectInfo {
+pub(crate) fn get_project_1() -> ProjectInfo {
     ProjectInfo {
         owner_id: "your.testnet".to_string(),
         name: "YOUR".to_string(),

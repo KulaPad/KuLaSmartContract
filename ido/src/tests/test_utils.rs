@@ -1,7 +1,42 @@
 use near_sdk::{AccountId, MockedBlockchain, PromiseResult, VMContext};
-use near_sdk::{Balance, BlockHeight, EpochHeight};
+use near_sdk::{Balance, BlockHeight, EpochHeight, Timestamp};
 
 const STAKING_TOKEN_ID: &str = "token-kulapad.testnet";
+const UNIX_TIME_ONE_SECOND_IN_NANOSECONDS: Timestamp = 1_000_000_000;
+const SECONDS_A_MINUTE: u8 = 60;
+const MINUTES_AN_HOUR: u8 = 60;
+const HOURS_A_DAY: u8 = 24;
+
+fn get_timestamp(days: u16, hours: u8, minutes: u8, seconds: u8) -> Timestamp {
+    let mut timestamp: Timestamp = 0;
+    timestamp = days as u64 * HOURS_A_DAY as u64 + hours as u64;
+    timestamp = timestamp * MINUTES_AN_HOUR as u64 + minutes as u64;
+    timestamp = timestamp * SECONDS_A_MINUTE as u64 + seconds as u64;
+    timestamp * UNIX_TIME_ONE_SECOND_IN_NANOSECONDS
+}
+
+pub fn increase_timestamp(timestamp: &Timestamp, days: u16, hours: u8, minutes: u8, seconds: u8) -> Timestamp {
+    timestamp + get_timestamp(days, hours, minutes, seconds)
+}
+
+pub fn decrease_timestamp(timestamp: &Timestamp, days: u16, hours: u8, minutes: u8, seconds: u8) -> Timestamp {
+    timestamp - get_timestamp(days, hours, minutes, seconds)
+}
+
+#[test]
+fn test_timestamp() {
+    // 2022-02-22 22:22:22 - 1645543342000000000
+    // 2022-01-31 21:21:21 - 1643638881000000000
+    let timestamp_1: Timestamp = 1645543342_000000000; // 2022-02-22 22:22:22
+    let timestamp_2: Timestamp = 1643638881_000000000; // 2022-01-31 21:21:21
+    let timestamp_3: Timestamp = 1645543403_000000000; // 2022-02-22 22:23:23
+
+    // increase t1 1s to t3
+    assert_eq!(increase_timestamp(&timestamp_1, 0, 0, 0, 61), timestamp_3);
+    assert_eq!(increase_timestamp(&timestamp_1, 0, 0, 1, 1), timestamp_3);
+    assert_eq!(timestamp_1, increase_timestamp(&timestamp_2, 22, 1, 1, 1));
+    assert_eq!(timestamp_2, decrease_timestamp(&timestamp_1, 22, 1, 1, 1));
+}
 
 pub fn staking() -> AccountId {
     "staking".to_string()
@@ -112,6 +147,11 @@ impl VMContextBuilder {
 
     pub fn finish(self) -> VMContext {
         self.context
+    }
+
+    pub fn block_timestamp(mut self, timestamp: Timestamp) -> Self {
+        self.context.block_timestamp = timestamp;
+        self
     }
 }
 

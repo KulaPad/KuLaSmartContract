@@ -1,18 +1,18 @@
 use crate::*;
 
-#[derive(BorshSerialize, BorshDeserialize, Default)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Default)]
 pub struct AccountTicket {
     /// The number of eligible ticket. Ex: 10
     pub eligible_tickets: TicketAmount,
     /// The number of ticket that user commits to join. Ex 1 -> 10
     pub deposit_tickets: TicketAmount,
     /// When user deposit fund to get the deposit ticket, the list of ticket would be generated based on the deposit order of the user.
-    pub ticket_ids: Vec<TicketId>,
+    pub ticket_ids: Vec<TicketNumber>,
     /// The list of win tickets
-    pub win_ticket_ids: Vec<TicketId>,
+    pub win_ticket_ids: Vec<TicketNumber>,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Default)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Default)]
 pub struct AccountTickets {
     pub staking_tier: StakingTier,
     pub staking_tickets: AccountTicket,
@@ -22,7 +22,7 @@ pub struct AccountTickets {
     pub deposit_allocations: TicketAmount,
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct AccountTokenSales {
     pub funding_amount: Balance,
     pub token_unlocked_amount: Balance,

@@ -6,7 +6,7 @@ pub enum SaleType {
     Vested
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug,PartialEq,Clone)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ProjectStatus {
     Proposed,
     Approved,
@@ -81,9 +81,9 @@ pub struct ProjectInfo {
     pub status: ProjectStatus,
     /// Fixed allocations for account that is Tier 4
     pub total_allocations: TicketAmount,
-    pub total_staking_tickets: TicketAmount,
-    pub total_social_tickets: TicketAmount,
-    pub total_referral_tickets: TicketAmount,
+    pub total_staking_tickets: TicketNumber,
+    pub total_social_tickets: TicketNumber,
+    pub total_referral_tickets: TicketNumber,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
@@ -128,11 +128,19 @@ impl ProjectInfo {
         let current_time = get_current_time();
         self.status == ProjectStatus::Sales && self.sale_start_date <= current_time && current_time <= self.sale_end_date
     }
+
+    pub(crate) fn get_total_sales_slots(&self) -> TicketAmount {
+        (self.token_raised_amount / self.token_amount_per_sale_slot as u64) as u32
+    }
+
+    pub(crate) fn get_available_sales_slots(&self) -> TicketAmount {
+        self.get_total_sales_slots() - self.total_allocations
+    }
 }
 
 #[near_bindgen]
 impl IDOContract{
-    pub fn create_project(&mut self, project_info: ProjectInfo) {
+    pub fn create_project(&mut self, project_info: ProjectInfo) -> ProjectId{
         // Get next Id
         let project_id = self.projects.len() + 1;
 
@@ -142,7 +150,9 @@ impl IDOContract{
         // Insert this project to related variables, this should be done by each status
         self.project_account_tickets.insert(&project_id, &UnorderedMap::new(get_storage_key(StorageKey::ProjectAccountTicketInnerKey(project_id)))); 
         self.project_account_token_sales.insert(&project_id, &UnorderedMap::new(get_storage_key(StorageKey::ProjectTokenSaleInnerKey(project_id)))); 
-        self.project_tickets.insert(&project_id, &LookupMap::new(get_storage_key(StorageKey::ProjectTicketInnerKey(project_id)))); 
+        self.project_tickets.insert(&project_id, &UnorderedMap::new(get_storage_key(StorageKey::ProjectTicketInnerKey(project_id)))); 
+        
+        project_id
     }
 
     pub fn get_project(&self, project_id: ProjectId) -> Option<ProjectInfoJson> {
@@ -150,16 +160,7 @@ impl IDOContract{
 
         self.internal_get_project(project_id, project)
     }
-
-    pub fn get_project_or_panic(&self, project_id: ProjectId) -> ProjectInfo {
-        let project = self.projects.get(&project_id);
-        if let Some(project) = project {
-            project
-        } else {
-            panic!("Project does not exist.");
-        }
-    }
-
+    
     pub fn get_projects(&self, status: Option<ProjectStatus>, from_index: Option<u64>, limit: Option<u64>) -> Vec<ProjectInfoJson>{
         self.projects
         .iter()
@@ -168,6 +169,67 @@ impl IDOContract{
         .take(limit.unwrap_or(DEFAULT_PAGE_SIZE) as usize)
         .map(|(project_id, project_info)| self.internal_get_project(project_id.clone(), Some(project_info)).unwrap())
         .collect()
+    }
+
+    pub fn change_project_status(&mut self, project_id: ProjectId) {
+        let mut project = self.get_project_or_panic(project_id);
+        let current_time = get_current_time();
+        match project.status {
+            ProjectStatus::Preparation => {
+                assert!(project.whitelist_start_date <= current_time && current_time <= project.whitelist_end_date, "Cannot change project's status to Whitelist");
+                project.status = ProjectStatus::Whitelist;
+            },
+            ProjectStatus::Whitelist => {
+                assert!(project.whitelist_end_date < current_time, "Cannot change project's status to Sale.");
+                project.status = ProjectStatus::Sales;
+            }
+            ProjectStatus::Sales => {
+                assert!(project.sale_end_date < current_time, "Cannot change project's status to Distribution.");
+                project.status = ProjectStatus::Distribution;
+            }
+            _ => panic!("Unable to change project status.")
+        }
+
+        // Update project
+        self.projects.insert(&project_id, &project);
+    }
+}
+
+impl IDOContract {
+    pub(crate) fn get_project_or_panic(&self, project_id: ProjectId) -> ProjectInfo {
+        let project = self.projects.get(&project_id);
+        if let Some(project) = project {
+            project
+        } else {
+            panic!("Project does not exist.");
+        }
+    }
+
+    pub(crate) fn get_project_account_ticket_or_panic(&self, project_id: ProjectId) -> AccountTicketsType {
+        let account = self.project_account_tickets.get(&project_id);
+        if let Some(account) = account {
+            account
+        } else {
+            panic!("Project account tickets do not exist.");
+        }
+    }
+
+    pub(crate) fn get_project_account_token_sale_or_panic(&self, project_id: ProjectId) -> AccountTokenSalesType {
+        let sale_account = self.project_account_token_sales.get(&project_id);
+        if let Some(sale_account) = sale_account {
+            sale_account
+        } else {
+            panic!("Project account token sales do not exist.");
+        }
+    }
+
+    pub(crate) fn get_project_ticket_or_panic(&self, project_id: ProjectId) -> ProjectTicketType {
+        let tickets = self.project_tickets.get(&project_id);
+        if let Some(tickets) = tickets {
+            tickets
+        } else {
+            panic!("Project tickets do not exist.");
+        }
     }
 
     pub(crate) fn internal_get_project(&self, project_id: ProjectId, project_info: Option<ProjectInfo>) -> Option<ProjectInfoJson> {
