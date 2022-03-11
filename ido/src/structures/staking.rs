@@ -34,7 +34,7 @@ pub struct TierInfo {
 }
 
 impl TierInfo {
-    fn new(tier: StakingTier, locked_amount: u64) -> Self {
+    pub(crate) fn new(tier: StakingTier, locked_amount: u64) -> Self {
         env::log(format!("Creating tier... -> Tier: {:?}", tier).as_bytes());
 
         Self {
@@ -42,6 +42,24 @@ impl TierInfo {
             no_of_tickets: UnorderedMap::new(get_storage_key(StorageKey::TierTicketInnerKey(format!("{:?}", tier)))),
             no_of_allocations: UnorderedMap::new(get_storage_key(StorageKey::TierAllocationInnerKey(format!("{:?}", tier)))),
         }
+    }
+
+    pub(crate) fn get_no_of_tickets(&self, locked_days: u16) -> u16 {
+        self.no_of_tickets
+            .iter()
+            .filter(|(days, _)| days <= &locked_days)
+            .map(|(_, tickets)| tickets)
+            .max()
+            .unwrap_or(0)
+    }
+
+    pub(crate) fn get_no_of_allocations(&self, locked_days: u16) -> u8 {
+        self.no_of_allocations
+            .iter()
+            .filter(|(days, _)| days <= &locked_days)
+            .map(|(_, tickets)| tickets)
+            .max()
+            .unwrap_or(0)
     }
 }
 
@@ -173,6 +191,8 @@ impl ProjectAccountInfoJson {
 #[near_bindgen]
 impl IDOContract {
     pub(crate) fn internal_get_staking_tier_info(&self, locked_amount: u64, locked_timestamp: Timestamp, calculating_timestamp: Option<Timestamp>) -> TierInfoJson {
+        println!("internal_get_staking_tier_info");
+        
         let calculating_timestamp = calculating_timestamp.unwrap_or(env::block_timestamp());
         
         // Step 1: Use locked_amount to identify staking tier
@@ -181,17 +201,17 @@ impl IDOContract {
         // Or the sheet https://docs.google.com/spreadsheets/d/1XWL2vtGIX89kGgj6M-X-ocCrQfz05fm9n4HncDrSuSU/edit#gid=778618928
 
         let tier = match locked_amount {
-            0...20000000000 => {
+            0...200_00000000 => {
                 StakingTier::Tier0
             },
-            20000000000...100000000000 => {
+            200_00000000...1000_00000000 => {
                 StakingTier::Tier1
 
             },
-            100000000000...500000000000 => {
+            1000_00000000...5000_00000000 => {
                 StakingTier::Tier2
             },
-            500000000000...1000000000000 => {
+            5000_00000000...10000_00000000 => {
                 StakingTier::Tier3
             },
             _ => {
@@ -203,13 +223,13 @@ impl IDOContract {
 
         // Step 2: Calculating the number of day between calculating_timestamp (Project.whitelist_start_date) and locked_timestamp.
 
-        let locked_days: u32 =((locked_timestamp - calculating_timestamp) / 84600000000000) as u32;
+        let locked_days: u32 = ((locked_timestamp - calculating_timestamp) / 86400_000000000) as u32;
         let day =locked_days as u16;
 
         // Step 3: Using calculating day (Ex: 30 days) to identify the number of staking tickets & the number of allocation (For Tier4 only)
         let tier_info = self.tiers.get(&tier).unwrap();
-        let no_of_staking_tickets = tier_info.no_of_tickets.get(&day).unwrap() as u32;
-        let no_of_allocations = tier_info.no_of_allocations.get(&day).unwrap() as u32;
+        let no_of_staking_tickets = tier_info.get_no_of_tickets(day) as u32;
+        let no_of_allocations = tier_info.get_no_of_allocations(day) as u32;
 
         // Step 4: Return data
         // tier: StakingTier,
