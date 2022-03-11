@@ -180,11 +180,36 @@ impl IDOContract {
         // Refer the initializing function initialize_tiers
         // Or the sheet https://docs.google.com/spreadsheets/d/1XWL2vtGIX89kGgj6M-X-ocCrQfz05fm9n4HncDrSuSU/edit#gid=778618928
 
+        let tier = match locked_amount {
+            0...20000000000 => {
+                StakingTier::Tier0
+            },
+            20000000000...100000000000 => {
+                StakingTier::Tier1
+
+            },
+            100000000000...500000000000 => {
+                StakingTier::Tier2
+            },
+            500000000000...1000000000000 => {
+                StakingTier::Tier3
+            },
+            _ => {
+                StakingTier::Tier4
+            },
+        };
+
         // If the locked amount is less than Tier1.locked_amount (TierInfo), return the default of TierInfoJson with Tier0.
 
         // Step 2: Calculating the number of day between calculating_timestamp (Project.whitelist_start_date) and locked_timestamp.
 
+        let locked_days: u32 =((locked_timestamp - calculating_timestamp) / 84600000000000) as u32;
+        let day =locked_days as u16;
+
         // Step 3: Using calculating day (Ex: 30 days) to identify the number of staking tickets & the number of allocation (For Tier4 only)
+        let tier_info = self.tiers.get(&tier).unwrap();
+        let no_of_staking_tickets = tier_info.no_of_tickets.get(&day).unwrap() as u32;
+        let no_of_allocations = tier_info.no_of_allocations.get(&day).unwrap() as u32;
 
         // Step 4: Return data
         // tier: StakingTier,
@@ -193,7 +218,14 @@ impl IDOContract {
         // calculating_time: Timestamp,
         // no_of_staking_tickets: TicketAmount,
         // no_of_allocations: TicketAmount,
-        TierInfoJson::default()
+        TierInfoJson {
+            tier,
+            locked_amount: U64::from(locked_amount),
+            locked_days,
+            calculating_time: calculating_timestamp,
+            no_of_staking_tickets,
+            no_of_allocations,
+        }
     }
 
     pub(crate) fn internal_get_project_staking_tier_info(&self, project_id: ProjectId, account_id: AccountId) -> ProjectAccountInfoJson {
