@@ -85,7 +85,9 @@ impl IDOContract {
         let mut account_tickets = accounts_of_current_project.get(&account_id).unwrap_or_else(|| AccountTickets::default());
         let new_allocations = tier_info.no_of_allocations - account_tickets.allocations;
         account_tickets.staking_tickets.eligible_tickets = tier_info.no_of_staking_tickets;
+        account_tickets.staking_tickets.deposit_tickets = tier_info.no_of_staking_tickets;
         account_tickets.allocations = tier_info.no_of_allocations;
+        account_tickets.deposit_allocations = tier_info.no_of_allocations;
         account_tickets.staking_tier = tier_info.tier;
 
         if new_allocations > 0 {
@@ -108,6 +110,7 @@ impl IDOContract {
                 tickets_in_current_project.insert(&ticket_id, &account_id);
 
                 account_tickets.staking_tickets.ticket_ids.push(ticket_number);
+                account_tickets.staking_tickets.win_ticket_ids.push(ticket_number);
             }
 
             // Update tickets_in_current_project

@@ -48,8 +48,21 @@ pub fn alice() -> AccountId {
 pub fn bob() -> AccountId {
     "bob".to_string()
 }
+
 pub fn owner() -> AccountId {
     "owner".to_string()
+}
+
+pub fn account_a() -> AccountId {
+    "account-a.tesnet".to_string()
+}
+
+pub fn account_b() -> AccountId {
+    "account-b.tesnet".to_string()
+}
+
+pub fn account_c() -> AccountId {
+    "account-c.tesnet".to_string()
 }
 
 pub fn ft_token_id() -> AccountId {
