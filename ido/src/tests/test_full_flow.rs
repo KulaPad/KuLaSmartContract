@@ -187,6 +187,8 @@ fn test_happy_case() {
     println!("Whitelist closed - {:#?}", staking_tier_info);
 
     // User A deposit fund
+
+    
     assert!(false);
 }
 

@@ -22,7 +22,7 @@ pub struct AccountTickets {
     pub deposit_allocations: TicketAmount,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Default)]
 pub struct AccountTokenSales {
     pub funding_amount: Balance,
     pub token_unlocked_amount: Balance,
