@@ -157,31 +157,34 @@ impl IDOContract{
         false
     }
 
+    /// Check an account wherever registered for a project or not
+    pub fn is_whitelist_by_account_id(&self, account_id:AccountId,project_id: ProjectId) -> bool {
+
+        self.assert_project_exist(project_id);
+
+        
+        let projects_in_account = self.account_projects.get(&account_id);
+
+        if let Some(projects_in_account) = projects_in_account {
+            if projects_in_account.contains(&project_id){
+                return true;
+            }
+        }
+        
+        false
+    }
+
     /// User deposits the exact acount of funding to buy token
     /// Account id is env::signer_account_id()
     /// This function support NEAR deposit only
     #[payable]
     pub fn buy_token(&mut self, project_id: ProjectId)-> Balance {
         
-        let project_info = self.projects.get(&project_id).expect("No project found");
-        assert!(project_info.status == ProjectStatus::Sales,"Project is not on sale");
-        let current_time = env::block_timestamp();
-        assert!((project_info.sale_start_date <= current_time)
-                &&(project_info.sale_end_date >= current_time),
-                "Project isn't on sale time");
+        let mut project_account_token_sales = self.unwrap_project_account_token_sales(project_id);     
         let account_id = env::signer_account_id();
-        let mut project_account_token_sales = self.unwrap_project_account_token_sales(project_id);         
-        
-        // Transfer deposit Near to contract owner
-        let account_tickets = self.unwrap_project_account_ticket(project_id, &account_id);
-        let tickets_win = account_tickets.staking_tickets.win_ticket_ids.len();
-        assert!(tickets_win>0,"Account did not win the whitelist");
-
-        let must_attach_deposit = project_info.token_sale_rate
-                                        .multiply(project_info.token_amount_per_sale_slot as u128)
-                                        *(tickets_win as u128);
+        let must_attach_deposit = self.calculate_must_attach_deposit_amount_by_account_id(&account_id,project_id);
         let deposit_amount = env::attached_deposit();
-        assert_eq!(deposit_amount,must_attach_deposit,"Must deposit {} NEAR",must_attach_deposit);
+        assert_eq!(deposit_amount,must_attach_deposit.0,"Must deposit {} NEAR",must_attach_deposit.0);
         
         // TODO: Increase total fund of NEAR that user deposited for this project to buy token
 
@@ -197,6 +200,34 @@ impl IDOContract{
         deposit_amount
     }
 
+    pub fn calculate_must_attach_deposit_amount_by_tickets_win(&self, project_id: ProjectId,tickets_win: usize) -> U128{
+
+        let project_info = self.projects.get(&project_id).expect("No project found");
+        assert!(project_info.status == ProjectStatus::Sales,"Project is not on sale");
+        let current_time = env::block_timestamp();
+        assert!((project_info.sale_start_date <= current_time)
+                &&(project_info.sale_end_date >= current_time),
+                "Project isn't on sale time");
+
+        let must_attach_deposit = project_info.token_sale_rate
+                                        .multiply(project_info.token_amount_per_sale_slot as u128)
+                                        *(tickets_win as u128);
+
+        U128(must_attach_deposit)
+    }
+
+
+    pub fn calculate_must_attach_deposit_amount_by_account_id(&self, account_id: &AccountId,project_id: ProjectId) -> U128{
+            
+        
+        // Transfer deposit Near to contract owner
+        let account_tickets = self.unwrap_project_account_ticket(project_id, &account_id);
+        let tickets_win = account_tickets.staking_tickets.win_ticket_ids.len();
+        assert!(tickets_win>0,"Account did not win the whitelist");
+
+        let must_attach_deposit = self.calculate_must_attach_deposit_amount_by_tickets_win(project_id,tickets_win);
+        must_attach_deposit
+    }
     /// Get token sales info of an account. If it does not exits, return None.
     pub fn get_account_token_sale_info(& self, project_id: ProjectId) -> Option<JsonAccountTokenSales> {
         let account_id = env::signer_account_id();
@@ -236,8 +267,8 @@ impl IDOContract{
     /// Usecase 2: Display on project details
     ///  * Input: ProjectId, AccountId
     ///  * Output: ProjectAccountInfoJson: Project, Status, Account, WhitelistInfo, SaleInfo, DistributionInfo
-    pub fn get_project_account_info(&self, project_id: ProjectId) -> ProjectAccountInfoJson {
-        let account_id = env::signer_account_id();
+    pub fn get_project_account_info(&self, account_id:AccountId,project_id: ProjectId) -> ProjectAccountInfoJson {
+        
         self.internal_get_project_staking_tier_info(project_id, account_id)
     }
 

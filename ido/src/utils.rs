@@ -43,22 +43,7 @@ impl IDOContract{
         assert!(self.internal_has_project(project_id), "Project does not exist.");
     }
 
-    // Function use for testing_buytoken
-    //#[private]
-    pub fn create_default_account_token_sales(&mut self, project_id: ProjectId, account_id: &AccountId){
-        let default_account_token_sales = AccountTokenSales{
-            funding_amount: 0,
-            token_unlocked_amount:0,
-            token_locked_amount:0,
-            token_withdrawal_amount:0,
-        };
-
-        self.assert_project_exist(project_id);
-
-        let mut account_token_sales = self.project_account_token_sales.get(&project_id).unwrap();
-        account_token_sales.insert(&account_id, &default_account_token_sales);
-        self.project_account_token_sales.insert(&project_id, &account_token_sales);
-    }
+    
 
     pub fn get_project_info(&self, project_id: &ProjectId)-> ProjectInfo{
 
@@ -94,5 +79,25 @@ impl IDOContract{
         let account_tickets = project_account_tickets.get(account_id)
                                                         .expect("Account didn't join whitelist");
         account_tickets
+    }
+}
+
+#[near_bindgen]
+impl IDOContract{
+    // Function use for testing_buytoken
+    //#[private]
+    pub fn create_default_account_token_sales(&mut self, project_id: ProjectId, account_id: &AccountId){
+        let default_account_token_sales = AccountTokenSales{
+            funding_amount: 0,
+            token_unlocked_amount:0,
+            token_locked_amount:0,
+            token_withdrawal_amount:0,
+        };
+
+        self.assert_project_exist(project_id);
+
+        let mut account_token_sales = self.project_account_token_sales.get(&project_id).unwrap();
+        account_token_sales.insert(&account_id, &default_account_token_sales);
+        self.project_account_token_sales.insert(&project_id, &account_token_sales);
     }
 }
