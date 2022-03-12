@@ -13,7 +13,7 @@ pub struct UserStakingInfo {
     pub lock_day_count: u32,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum StakingTier {
     Tier0,
     Tier1,
@@ -201,17 +201,17 @@ impl IDOContract {
         // Or the sheet https://docs.google.com/spreadsheets/d/1XWL2vtGIX89kGgj6M-X-ocCrQfz05fm9n4HncDrSuSU/edit#gid=778618928
 
         let tier = match locked_amount {
-            0...200_00000000 => {
+            0...199_99999999 => {
                 StakingTier::Tier0
             },
-            200_00000000...1000_00000000 => {
+            200_00000000...999_99999999 => {
                 StakingTier::Tier1
 
             },
-            1000_00000000...5000_00000000 => {
+            1000_00000000...4999_99999999 => {
                 StakingTier::Tier2
             },
-            5000_00000000...10000_00000000 => {
+            5000_00000000...9999_99999999 => {
                 StakingTier::Tier3
             },
             _ => {
@@ -219,12 +219,23 @@ impl IDOContract {
             },
         };
 
-        // If the locked amount is less than Tier1.locked_amount (TierInfo), return the default of TierInfoJson with Tier0.
-
         // Step 2: Calculating the number of day between calculating_timestamp (Project.whitelist_start_date) and locked_timestamp.
-
         let locked_days: u32 = ((locked_timestamp - calculating_timestamp) / 86400_000000000) as u32;
-        let day =locked_days as u16;
+        let day = locked_days as u16;
+
+        let mut tier_info_json = TierInfoJson {
+            tier: tier.clone(),
+            locked_amount: U64::from(locked_amount),
+            locked_days: locked_days,
+            calculating_time: calculating_timestamp,
+            no_of_staking_tickets: 0,
+            no_of_allocations: 0,
+        };
+
+        // If the locked amount is less than Tier1.locked_amount (TierInfo), return the default of TierInfoJson with Tier0.
+        if tier == StakingTier::Tier0 {
+            return tier_info_json;
+        }
 
         // Step 3: Using calculating day (Ex: 30 days) to identify the number of staking tickets & the number of allocation (For Tier4 only)
         let tier_info = self.tiers.get(&tier).unwrap();
@@ -232,20 +243,11 @@ impl IDOContract {
         let no_of_allocations = tier_info.get_no_of_allocations(day) as u32;
 
         // Step 4: Return data
-        // tier: StakingTier,
-        // locked_amount: U64,
-        // locked_days: u32,
-        // calculating_time: Timestamp,
-        // no_of_staking_tickets: TicketAmount,
-        // no_of_allocations: TicketAmount,
-        TierInfoJson {
-            tier,
-            locked_amount: U64::from(locked_amount),
-            locked_days,
-            calculating_time: calculating_timestamp,
-            no_of_staking_tickets,
-            no_of_allocations,
-        }
+
+        tier_info_json.no_of_staking_tickets = no_of_staking_tickets;
+        tier_info_json.no_of_allocations = no_of_allocations;
+
+        tier_info_json
     }
 
     pub(crate) fn internal_get_project_staking_tier_info(&self, project_id: ProjectId, account_id: AccountId) -> ProjectAccountInfoJson {

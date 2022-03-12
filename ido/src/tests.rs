@@ -11,3 +11,5 @@ pub mod test_whitelist;
 pub mod test_buytoken;
 
 pub mod test_full_flow;
+
+pub mod test_staking_tier;

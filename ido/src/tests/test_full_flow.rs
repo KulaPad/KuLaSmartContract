@@ -4,26 +4,10 @@ use crate::structures::project::*;
 use crate::tests::test_project::*;
 use crate::staking_contract::*;
 use crate::structures::staking::*;
+use crate::tests::test_staking_tier::*;
 
-use near_sdk::{env, AccountId};
+use near_sdk::{env, AccountId, Timestamp};
 use near_sdk::json_types::{U128, U64};
-
-fn get_sample_account_json(account_id: &AccountId) -> AccountJson {
-    let account_json = AccountJson {
-        account_id: account_id.clone(),
-        lock_balance: U128::from(500_00000000),
-        unlock_timestamp: 1647879472091741700,
-        stake_balance: U128::from(1100_00000000),
-        unstake_balance: U128::from(0),
-        reward: U128::from(12058904),
-        can_withdraw: true,
-        start_unstake_timestamp: 0,
-        unstake_available_epoch: 0,
-        current_epoch: 980,
-    };
-
-    account_json
-}
 
 #[test]
 fn test_happy_case() {
@@ -102,39 +86,4 @@ fn test_happy_case() {
 
     // User A deposit fund
 
-}
-
-#[test]
-fn test_internal_get_staking_tier_info() {
-    let account_id = bob();
-
-    let mut emulator = Emulator::default();
-    emulator.update_context(account_id.clone(), account_id.clone(), 0);
-    
-    let account_json = get_sample_account_json(&account_id);
-    let locked_amount: u128 = account_json.lock_balance.into();
-    let locked_amount = locked_amount as u64;
-    let locked_days: u32 = 10;
-    let unlock_timestamp = account_json.unlock_timestamp;
-
-    let current_timestamp = decrease_timestamp(&unlock_timestamp, locked_days.try_into().unwrap(), 0, 0, 0);
-    emulator.set_block_timestamp(current_timestamp);
-
-    let tier_info = emulator.contract.internal_get_staking_tier_info(locked_amount, unlock_timestamp, None);
-
-    // TierInfoJson {
-    //     tier: Tier1,
-    //     locked_amount: locked_amount,
-    //     locked_days: locked_days (10),
-    //     calculating_time: current_timestamp,
-    //     no_of_staking_tickets: 1,
-    //     no_of_allocations: 0,
-    // }
-
-    assert_eq!(StakingTier::Tier1, tier_info.tier);
-    assert_eq!(U64::from(locked_amount), tier_info.locked_amount);
-    assert_eq!(locked_days, tier_info.locked_days);
-    assert_eq!(current_timestamp, tier_info.calculating_time);
-    assert_eq!(1, tier_info.no_of_staking_tickets);
-    assert_eq!(0, tier_info.no_of_allocations);
 }
