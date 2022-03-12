@@ -33,7 +33,7 @@ pub const STAKING_CONTRACT_ID: &str = "staking-kulapad.testnet";
 pub const GAS_FUNCTION_CALL: u64 = 5_000_000_000_000;
 pub const NO_DEPOSIT: u128 = 0;
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub enum StorageKey {
     ProjectKey,
     ProjectAccountTicketKey,
@@ -71,7 +71,7 @@ pub struct IDOContract{
     pub project_account_token_sales: LookupMap<ProjectId, AccountTokenSalesType>,
 
     /// Stores the list of tickets that belongs to each project.
-    /// Ex: Project 1: Tickets [{Id: 1, Type: Staking, Account Id: account1.testnet }, {Id: 2, Type: Social, Account Id: account2.testnet }, ...]
+    /// Ex: Project 1: Tickets [{Id: L1, Account Id: account1.testnet }, {Id: S2, Account Id: account2.testnet }, ...]
     /// The user tickets were stored here during re-calculate
     pub project_tickets: LookupMap<ProjectId, ProjectTicketType>,
     
@@ -124,10 +124,8 @@ impl IDOContract{
     pub fn register_whitelist(&mut self, project_id: ProjectId) {
         let project_info = self.get_project_info(&project_id);                         
         assert_eq!(project_info.status, ProjectStatus::Whitelist,"Project isn't on whitelist");
-        let current_time = env::block_timestamp();
-        assert!((project_info.whitelist_start_date <= current_time)
-                &&(project_info.whitelist_end_date >= current_time),
-                "Project isn't on whitelist time");
+        
+        assert!(project_info.is_in_whitelist_period(), "Project isn't on whitelist time");
 
         let account_id = env::signer_account_id();
         let mut account_projects = self.unwrap_account_project(&account_id);
@@ -135,6 +133,11 @@ impl IDOContract{
         assert!(!account_projects.contains(&project_id),"Already register whitelist this project");
         account_projects.insert(&project_id);
         self.account_projects.insert(&account_id,&account_projects);
+
+        // Insert into project_account_tickets -> Use unwrap because of making sure that it has been inserted when project created.
+        let mut accounts_in_project = self.project_account_tickets.get(&project_id).unwrap();
+        accounts_in_project.insert(&account_id, &AccountTickets::default());
+        self.project_account_tickets.insert(&project_id, &accounts_in_project);
     }
 
     /// Check an account wherever registered for a project or not
@@ -255,36 +258,50 @@ impl IDOContract{
     }
 
     pub fn close_project_whitelist(&mut self, project_id: ProjectId) {
+        println!("close_project_whitelist - inside");
         // Get project
         let mut project = self.get_project_or_panic(project_id);
         let current_time = get_current_time();
 
-        // Validate & update status to Sale
-        assert!(project.status == ProjectStatus::Whitelist && project.whitelist_end_date <= current_time, "The project's status is not correct or the whitelist period is not end.");
-
+        println!("close_project_whitelist - get_current_time");
+        // Validate & update status to Sale -> 
+        assert!(project.status == ProjectStatus::Whitelist && project.whitelist_end_date <= current_time, "{}", format!("The project's status ({:?}) is not correct or the whitelist period (End: {} - Current: {}) is not end.", project.status, project.whitelist_end_date, current_time));
         
         // Random list of tickets
         let tickets = self.get_project_ticket_or_panic(project_id);
         let mut account_tickets = self.get_project_account_ticket_or_panic(project_id);
         let no_of_win_tickets = std::cmp::min(project.total_staking_tickets, project.get_available_sales_slots() as u64);
 
+        println!("close_project_whitelist - no_of_win_tickets: {}", no_of_win_tickets);
+
         for i in 0..no_of_win_tickets {
             let ticket_number = i + 1;
             let ticket_id = build_ticket_id(TicketType::Staking, ticket_number);
-            
-            let account_id = tickets.get(&ticket_id);
-            if let Some(account_id) = account_id {
-                let account = account_tickets.get(&account_id);
-                if let Some(mut account) = account {
-                    if account.staking_tickets.ticket_ids.contains(&ticket_number) {
-                        account.staking_tickets.win_ticket_ids.push(ticket_number);
 
-                        account_tickets.insert(&account_id, &account);
-                        self.project_account_tickets.insert(&project_id, &account_tickets);
-                    }
-                }
-            }
+            println!("close_project_whitelist - ticket_id: {}", ticket_id);
+            
+            // let account_id = tickets.get(&ticket_id);
+
+            // println!("close_project_whitelist - tried to get account_id");
+
+            // if let Some(account_id) = account_id {
+            //     println!("close_project_whitelist - account_id: {}", account_id);
+
+            //     let account = account_tickets.get(&account_id);
+            //     if let Some(mut account) = account {
+            //         if account.staking_tickets.ticket_ids.contains(&ticket_number) {
+            //             account.staking_tickets.win_ticket_ids.push(ticket_number);
+
+            //             account_tickets.insert(&account_id, &account);
+            //             self.project_account_tickets.insert(&project_id, &account_tickets);
+            //         }
+            //     }
+            // } else {
+            //     println!("close_project_whitelist - cannot get account_id");
+            // }
         }
+
+        println!("close_project_whitelist - end of for");
 
         project.status = ProjectStatus::Sales;
         self.projects.insert(&project_id, &project);

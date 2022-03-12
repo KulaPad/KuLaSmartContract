@@ -38,7 +38,6 @@ pub(crate) fn assert_project_whitelist_period(project: &ProjectInfo) {
     assert!(project.is_in_whitelist_period(), "Project isn't in whitelist period.");
 }
 
-//#[near_bindgen]
 impl IDOContract{
     pub(crate) fn assert_project_exist(&self, project_id: ProjectId) {
         assert!(self.internal_has_project(project_id), "Project does not exist.");
@@ -95,38 +94,5 @@ impl IDOContract{
         let account_tickets = project_account_tickets.get(account_id)
                                                         .expect("Account didn't join whitelist");
         account_tickets
-    }
-
-
-    pub fn update_project_whitelist_date(&mut self,project_id: ProjectId,new_whitelist_start_date: Timestamp, new_whitelist_end_date: Timestamp) {
-        assert_eq!(self.owner_id, env::signer_account_id(),"You are not allowed to update this project");
-
-        let mut project_info = self.projects.get(&project_id).expect("No project found");
-        project_info.whitelist_start_date = new_whitelist_start_date;
-        project_info.whitelist_end_date = new_whitelist_end_date;
-
-        self.projects.insert(&project_id, &project_info);
-
-    }
-
-    pub fn update_project_sales_date(&mut self,project_id: ProjectId,new_sale_start_date: Timestamp, new_sale_end_date: Timestamp) {
-        assert_eq!(self.owner_id, env::signer_account_id(),"You are not allowed to update this project");
-
-        let mut project_info = self.projects.get(&project_id).expect("No project found");
-        project_info.sale_start_date = new_sale_start_date;
-        project_info.sale_end_date = new_sale_end_date;
-
-        self.projects.insert(&project_id, &project_info);
-
-    }
-
-    pub fn update_project_status(&mut self,project_id: ProjectId,new_status: ProjectStatus) {
-        assert_eq!(self.owner_id, env::signer_account_id(),"You are not allowed to update this project");
-
-        let mut project_info = self.projects.get(&project_id).expect("No project found");
-        project_info.status = new_status;
-
-        self.projects.insert(&project_id, &project_info);
-
     }
 }

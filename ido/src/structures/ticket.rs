@@ -7,7 +7,7 @@ pub enum TicketType {
     Referral,
 }
 
-pub fn build_ticket_id(ticket_type: TicketType, ticket_numer: TicketNumber) -> String {
+pub(crate) fn build_ticket_id(ticket_type: TicketType, ticket_numer: TicketNumber) -> String {
     let prefix = match ticket_type {
         TicketType::Staking => "L",
         TicketType::Social => "S",

@@ -45,15 +45,19 @@ impl Emulator {
     pub fn set_block_timestamp(&mut self, timestamp: Timestamp) {
         self.context.block_timestamp = timestamp;
 
+        println!("block_timestamp: {}", timestamp);
+
         testing_env!(self.context.clone());
     }
 
     /// Keep the remaining properties the same.
     pub fn set_account_id_and_desposit(&mut self, predecessor_account_id: String, signer_account_id:String, deposit: Balance) {
-        self.context.predecessor_account_id = predecessor_account_id;
-        self.context.signer_account_id = signer_account_id;
+        self.context.predecessor_account_id = predecessor_account_id.clone();
+        self.context.signer_account_id = signer_account_id.clone();
         self.context.attached_deposit = deposit;
         
+        println!("predecessor_account_id: {}, signer_account_id: {}, attached_deposit: {}", predecessor_account_id, signer_account_id, deposit);
+
         testing_env!(self.context.clone());
     }
 }

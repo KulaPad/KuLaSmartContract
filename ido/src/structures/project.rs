@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize,PartialEq)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug)]
 pub enum SaleType {
     FullUnlocked,
     Vested
@@ -21,7 +21,7 @@ impl Default for ProjectStatus {
     fn default() -> Self { ProjectStatus::Preparation }
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug)]
 pub struct Rate {
     numberator: u64,
     denominator: u64,
@@ -44,7 +44,7 @@ impl Rate {
     }
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug)]
 pub struct ProjectInfo {
     /// yourproject.near
     pub owner_id: AccountId,
@@ -86,7 +86,7 @@ pub struct ProjectInfo {
     pub total_referral_tickets: TicketNumber,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug)]
 pub struct ProjectConfiguration {
     pub max_staking_tickets_per_user: u16,
     pub max_win_tickets_per_user: u8,
@@ -193,43 +193,66 @@ impl IDOContract{
         // Update project
         self.projects.insert(&project_id, &project);
     }
+
+    pub fn update_project_whitelist_date(&mut self, project_id: ProjectId, new_whitelist_start_date: Option<Timestamp>, new_whitelist_end_date: Option<Timestamp>) {
+        assert_eq!(self.owner_id, env::signer_account_id(), "You are not allowed to update this project");
+
+        let mut project_info = self.projects.get(&project_id).expect("No project found");
+
+        let a_half_of_whitelist_period = (project_info.whitelist_end_date - project_info.whitelist_start_date) / 2;
+        let current_time = env::block_timestamp();
+
+        println!("update_project_whitelist_date: current_time: {}, a_half_of_period: {}", current_time, a_half_of_whitelist_period);
+
+        project_info.whitelist_start_date = new_whitelist_start_date.unwrap_or(current_time - a_half_of_whitelist_period);
+        project_info.whitelist_end_date = new_whitelist_end_date.unwrap_or(current_time + a_half_of_whitelist_period);
+
+        self.projects.insert(&project_id, &project_info);
+
+    }
+
+    pub fn update_project_sales_date(&mut self, project_id: ProjectId, new_sale_start_date: Option<Timestamp>, new_sale_end_date: Option<Timestamp>) {
+        assert_eq!(self.owner_id, env::signer_account_id(), "You are not allowed to update this project");
+
+        let mut project_info = self.projects.get(&project_id).expect("No project found");
+
+        let a_half_of_sales_period = (project_info.sale_end_date - project_info.sale_start_date) / 2;
+        let current_time = env::block_timestamp();
+
+        project_info.whitelist_start_date -= a_half_of_sales_period;
+        project_info.whitelist_end_date = a_half_of_sales_period;
+        project_info.sale_start_date = new_sale_start_date.unwrap_or(current_time - a_half_of_sales_period);
+        project_info.sale_end_date = new_sale_end_date.unwrap_or(current_time + a_half_of_sales_period);
+
+        self.projects.insert(&project_id, &project_info);
+
+    }
+
+    pub fn update_project_status(&mut self, project_id: ProjectId, new_status: ProjectStatus) {
+        assert_eq!(self.owner_id, env::signer_account_id(),"You are not allowed to update this project");
+
+        let mut project_info = self.projects.get(&project_id).expect("No project found");
+        project_info.status = new_status;
+
+        self.projects.insert(&project_id, &project_info);
+    }
 }
 
 impl IDOContract {
     pub(crate) fn get_project_or_panic(&self, project_id: ProjectId) -> ProjectInfo {
-        let project = self.projects.get(&project_id);
-        if let Some(project) = project {
-            project
-        } else {
-            panic!("Project does not exist.");
-        }
+        self.projects.get(&project_id).expect("Project does not exist.")
     }
 
     pub(crate) fn get_project_account_ticket_or_panic(&self, project_id: ProjectId) -> AccountTicketsType {
-        let account = self.project_account_tickets.get(&project_id);
-        if let Some(account) = account {
-            account
-        } else {
-            panic!("Project account tickets do not exist.");
-        }
+        self.project_account_tickets.get(&project_id).expect("Project account tickets do not exist.")
     }
 
     pub(crate) fn get_project_account_token_sale_or_panic(&self, project_id: ProjectId) -> AccountTokenSalesType {
-        let sale_account = self.project_account_token_sales.get(&project_id);
-        if let Some(sale_account) = sale_account {
-            sale_account
-        } else {
-            panic!("Project account token sales do not exist.");
-        }
+        self.project_account_token_sales.get(&project_id).expect("Project account token sales do not exist.")
     }
 
     pub(crate) fn get_project_ticket_or_panic(&self, project_id: ProjectId) -> ProjectTicketType {
-        let tickets = self.project_tickets.get(&project_id);
-        if let Some(tickets) = tickets {
-            tickets
-        } else {
-            panic!("Project tickets do not exist.");
-        }
+        self.project_tickets.get(&project_id).expect("Project tickets do not exist.")
     }
 
     pub(crate) fn internal_get_project(&self, project_id: ProjectId, project_info: Option<ProjectInfo>) -> Option<ProjectInfoJson> {

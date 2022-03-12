@@ -148,7 +148,7 @@ impl Default for TierInfoJson {
     }
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 pub struct ProjectWhitelistInfo {
     pub tier: StakingTier,
     pub no_of_staking_tickets: TicketAmount,
@@ -167,7 +167,7 @@ pub struct ProjectDistributionInfo {
 /// Sales                       -> [Fields in Whitelist] + 
 /// Distribution                -> Ticket + Fund + Token
 /// Other statuses              -> Panic
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 pub struct ProjectAccountInfoJson {
     pub account_id: AccountId,
     pub project_id: ProjectId,
@@ -322,7 +322,7 @@ impl IDOContract {
 
     pub fn get_white_list_info(&self, project_id: ProjectId, account_id: &AccountId)-> ProjectWhitelistInfo{
         // Ticket information of this account
-        let ticket_info = self.unwrap_project_account_ticket(project_id,&account_id);
+        let ticket_info = self.unwrap_project_account_ticket(project_id, &account_id);
 
         // ProjectWhitelistInfo
         //     tier: StakingTier,

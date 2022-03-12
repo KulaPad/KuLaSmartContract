@@ -1,10 +1,9 @@
 use crate::tests::test_utils::*;
 use crate::tests::test_emulator::*;
-use crate::structures::project::*;
 use crate::tests::test_project::*;
-use crate::staking_contract::*;
-use crate::structures::staking::*;
 use crate::tests::test_staking_tier::*;
+
+use crate::*;
 
 use near_sdk::{env, AccountId, Timestamp};
 use near_sdk::json_types::{U128, U64};
@@ -25,6 +24,7 @@ fn test_happy_case() {
     let status = ProjectStatus::Preparation;
 
     let valid_whitelist_time = increase_timestamp(&whitelist_start_date, 1, 0, 0, 0);
+    let before_whitelist_time = decrease_timestamp(&whitelist_start_date, 1, 0, 0, 0);
     let out_of_whitelist_time = increase_timestamp(&whitelist_end_date, 0, 0, 10, 0);
     let valid_sales_time = increase_timestamp(&sale_start_date, 0, 0, 10, 0);
 
@@ -53,10 +53,14 @@ fn test_happy_case() {
     }
     
     // Change project's status to Whitelist
-    emulator.set_block_timestamp(valid_whitelist_time);
-    assert_eq!(valid_whitelist_time, emulator.context.block_timestamp);
+    emulator.set_block_timestamp(before_whitelist_time);
+    assert_eq!(before_whitelist_time, emulator.context.block_timestamp);
+
+    emulator.set_account_id_and_desposit(owner(), owner(), 0);
+    emulator.contract.update_project_whitelist_date(project_id, None, None);
 
     emulator.contract.change_project_status(project_id);
+
     let created_project = emulator.contract.get_project(project_id).unwrap();
     assert_eq!(ProjectStatus::Whitelist, created_project.status);
 
@@ -64,26 +68,170 @@ fn test_happy_case() {
     let account_a = bob();
     emulator.set_account_id_and_desposit(account_a.clone(), account_a.clone(), 0);
     emulator.contract.register_whitelist(project_id);
-    println!("User A registers whitelist");
+    println!("User A registers whitelist - {}", account_a);
     assert!(emulator.contract.is_whitelist(project_id));
+
+    let projects_in_account = emulator.contract.account_projects.get(&account_a).unwrap();
+    let accounts_and_tickets_in_project = emulator.contract.project_account_tickets.get(&project_id).unwrap();
+
+    assert!(projects_in_account.contains(&project_id));
+    assert_eq!(1, accounts_and_tickets_in_project.len() as u32);
 
     // User B registers whitelist
 
     // User C do not register whitelist
     let account_c = alice();
     emulator.set_account_id_and_desposit(account_c.clone(), account_c.clone(), 0);
-    println!("User C registers whitelist");
+    println!("User C registers whitelist - {}", account_c);
     assert!(!emulator.contract.is_whitelist(project_id));
 
     // User A stakes & locks Tier1 for 31 days => Cross contract call
 
     // User A updated staking tier => Cross contract call
-    let account_json = get_sample_account_json(&account_a);
+    let locked_amount: u128 = 200_00000000;
+    let locked_days: u16 = 10;
+    let locked_timestamp: Timestamp = increase_timestamp(&whitelist_start_date, locked_days, 0, 0, 0);
+    let expected_staking_tier = StakingTier::Tier1;
+    let expected_staking_tickets: TicketAmount = 1;
+    let expected_allocations: TicketAmount = 0;
+
+    let account_json = get_account_json(&account_a, locked_amount, locked_timestamp);
 
     emulator.contract.process_update_staking_tickets(project_id, account_a.clone(), account_json);
 
+    // Validate stored data
+    let project = emulator.contract.projects.get(&project_id).unwrap();
+    println!("Staking tier -> Total tickets");
+    assert_eq!(expected_staking_tickets as u64, project.total_staking_tickets);
+    assert_eq!(expected_allocations, project.total_allocations);
+    
+    let account_tickets = emulator.contract.project_account_tickets.get(&project_id).unwrap();
+    let tickets = account_tickets.get(&account_a).unwrap();
+
+    println!("Staking tier -> Account Staking Tickets");
+    assert_eq!(expected_staking_tier, tickets.staking_tier);
+    assert_eq!(expected_staking_tickets, tickets.staking_tickets.eligible_tickets);
+    assert_eq!(0, tickets.staking_tickets.deposit_tickets);
+    assert_eq!(expected_staking_tickets, tickets.staking_tickets.ticket_ids.len() as u32);
+    assert_eq!(0, tickets.staking_tickets.win_ticket_ids.len() as u32);
+
+    println!("Staking tier -> Account Staking Tickets - Allocations");
+
+    assert_eq!(expected_allocations, tickets.allocations);
+    assert_eq!(0, tickets.deposit_allocations);
+
+    let ticket_number = tickets.staking_tickets.ticket_ids[0];
+    let ticket_id = build_ticket_id(TicketType::Staking, ticket_number);
+
+    println!("Staking tier -> Project Ticket");
+    let project_tickets = emulator.contract.project_tickets.get(&project_id);
+    println!("Staking tier -> Project Ticket - Achieved object");
+    if let Some(project_tickets) = project_tickets {
+        let keys = project_tickets.keys_as_vector();
+        let values = project_tickets.values_as_vector();
+        println!("Staking tier -> Project Ticket - Ticket Owner - Len: {} - [({},{})]", &project_tickets.len(), 0, 0);
+        
+        // let ticket_owner = project_tickets.get(&ticket_id);
+        // if let Some(ticket_owner) = ticket_owner {
+        //     println!("Staking tier -> Project Ticket - Assert");
+        //     assert_eq!(account_a, ticket_owner);
+        // } else {
+        //     panic!("Cannot get ticket owner.");
+        // }
+    } else {
+        panic!("Cannot get project ticket.");
+    }
+
+    // Validate response data
+    emulator.set_account_id_and_desposit(account_a.clone(), account_a.clone(), 0);
+    println!("Get project account info for Account A - {}", account_a);
+    let staking_tier_info: ProjectAccountInfoJson = emulator.contract.get_project_account_info(project_id);
+    println!("Whitelist open - {:#?}", staking_tier_info);
+
+    assert_eq!(account_a, staking_tier_info.account_id);
+    assert_eq!(project_id, staking_tier_info.project_id);
+    assert_eq!(project.status, staking_tier_info.project_status);
+
+    // Return data
+    // ProjectAccountInfoJson {
+    //     account_id: "bob",
+    //     project_id: 1,
+    //     project_status: Whitelist,
+    //     whitelist_info: Some(
+    //         ProjectWhitelistInfo {
+    //             tier: Tier1,
+    //             no_of_staking_tickets: 1,
+    //             no_of_social_tickets: 0,
+    //             no_of_referral_tickets: 0,
+    //             no_of_allocations: 0,
+    //         },
+    //     ),
+    //     sale_info: None,
+    // }
+
     // Close whitelist
+    emulator.set_account_id_and_desposit(owner(), owner(), 0);
+    emulator.contract.update_project_sales_date(project_id, None, None);
+
+    println!("update_project_sales_date");
+
+    emulator.contract.close_project_whitelist(project_id);
+
+    println!("close_project_whitelist");
+
+    emulator.set_account_id_and_desposit(account_a.clone(), account_a.clone(), 0);
+    let project = emulator.contract.projects.get(&project_id).unwrap();
+    assert_eq!(ProjectStatus::Sales, project.status);
+
+    let staking_tier_info: ProjectAccountInfoJson = emulator.contract.get_project_account_info(project_id);
+    println!("Whitelist closed - {:#?}", staking_tier_info);
 
     // User A deposit fund
+    assert!(false);
+}
 
+#[test]
+fn test_project_ticket() {
+    let mut emulator = Emulator::default();
+    let project = get_project_1();
+    let project_id = emulator.contract.create_project(project);
+
+    println!("Start testing...");
+
+    let mut project_ticket = emulator.contract.project_tickets.get(&project_id).unwrap();
+    assert_eq!(0, project_ticket.len() as u32);
+
+    project_ticket.insert(&"L1".to_string(), &"Account_1".to_string());
+    assert_eq!(1, project_ticket.len() as u32);
+
+    // Update
+    emulator.contract.project_tickets.insert(&project_id, &project_ticket);
+
+    // Reload
+    let project_ticket = emulator.contract.project_tickets.get(&project_id).unwrap();
+    let keys = project_ticket.keys_as_vector().to_vec();
+    let values = project_ticket.values_as_vector().to_vec();
+
+    println!("Key: {}, Value: {}", keys[0], values[0]);
+
+    //assert!(false);
+}
+
+
+#[test]
+fn test_key_storage() {
+    let mut emulator = Emulator::default();
+
+    println!("{:?}", StorageKey::ProjectTicketInnerKey(1).try_to_vec().unwrap());
+    println!("{:?}", StorageKey::ProjectTicketInnerKey(2).try_to_vec().unwrap());
+    println!("{:?}", StorageKey::ProjectTicketInnerKey(3).try_to_vec().unwrap());
+
+    println!("");
+
+    println!("{:?}", StorageKey::ProjectAccountTicketInnerKey(1).try_to_vec().unwrap());
+    println!("{:?}", StorageKey::ProjectAccountTicketInnerKey(2).try_to_vec().unwrap());
+    println!("{:?}", StorageKey::ProjectAccountTicketInnerKey(3).try_to_vec().unwrap());
+    println!("{:?}", StorageKey::ProjectAccountTicketInnerKey(u64::MAX).try_to_vec().unwrap());
+
+    assert!(false);
 }

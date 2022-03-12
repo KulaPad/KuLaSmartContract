@@ -98,7 +98,7 @@ impl IDOContract {
 
         if new_no_of_tickets > 0 {
             // Get project_tickets to insert ticket
-            let mut tickets_in_current_project = self.project_tickets.get(&project_id).unwrap();
+            let mut tickets_in_current_project = self.get_project_ticket_or_panic(project_id);
             
             for _ in 0..new_no_of_tickets {
                 project.total_staking_tickets += 1;
