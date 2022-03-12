@@ -257,7 +257,6 @@ impl IDOContract {
         
         let mut result = ProjectAccountInfoJson::new(account_id.clone(), project_id, project.status.clone());
 
-
         // Project's status is in Whitelist, Sale, Distribution
         
         match project.status{
@@ -286,10 +285,7 @@ impl IDOContract {
             {    
                     // Get from self.project_account_token_sales. Project -> Account -> AccountTokenSales
                     // Token Sales: funding_amount, token_unlocked_amount, allocations, token_locked_amount, token_withdrawal_amount
-                    
-                    let account_token_sales = self.unwrap_project_account_token_sales(project_id);
-                    let sale_info = account_token_sales.get(&account_id).expect("Account id are allow buy token");
-
+                    let sale_info = self.unwrap_project_account_token_sales(project_id, &account_id).unwrap_or(AccountTokenSales::default());
                     let whitelist_info = self.get_white_list_info(project_id, &account_id); 
 
                     result.whitelist_info = Some(whitelist_info); 
@@ -302,27 +298,16 @@ impl IDOContract {
                         }
                     )
             },
-        
-
-            
-
-            _ => 
-            {
-                
-            }
-
-
+            _ => {}
         }
 
-
-        result.project_status = project.status.clone();
         // Return data
         result
     }
 
     pub fn get_white_list_info(&self, project_id: ProjectId, account_id: &AccountId)-> ProjectWhitelistInfo{
         // Ticket information of this account
-        let ticket_info = self.unwrap_project_account_ticket(project_id, &account_id);
+        let ticket_info = self.unwrap_project_account_ticket(project_id, &account_id).unwrap_or(AccountTickets::default());
 
         // ProjectWhitelistInfo
         //     tier: StakingTier,

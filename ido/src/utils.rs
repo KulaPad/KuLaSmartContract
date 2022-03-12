@@ -38,6 +38,10 @@ pub(crate) fn assert_project_whitelist_period(project: &ProjectInfo) {
     assert!(project.is_in_whitelist_period(), "Project isn't in whitelist period.");
 }
 
+pub(crate) fn assert_project_sale_period(project: &ProjectInfo) {
+    assert!(project.is_in_sale_period(), "Project isn't in sale period.");
+}
+
 impl IDOContract{
     pub(crate) fn assert_project_exist(&self, project_id: ProjectId) {
         assert!(self.internal_has_project(project_id), "Project does not exist.");
@@ -66,19 +70,20 @@ impl IDOContract{
         account_projects
     }
 
-    pub fn unwrap_project_account_token_sales(&self, project_id: ProjectId) 
-            -> UnorderedMap<AccountId, AccountTokenSales> {
-        self.assert_project_exist(project_id);
-        let project_account_token_sales = self.project_account_token_sales.get(&project_id).unwrap();
-        project_account_token_sales
+    /// Return an AccountTokenSales object if project_id & account_id existed. 
+    /// If project_id doesn't exist -> panic. 
+    /// If accoung_id doesn't exist -> None.
+    pub fn unwrap_project_account_token_sales(&self, project_id: ProjectId, account_id: &AccountId) -> Option<AccountTokenSales> {
+        let project_account_token_sales = self.get_project_account_token_sale_or_panic(project_id);
+        project_account_token_sales.get(account_id)
     }
 
-    pub fn unwrap_project_account_ticket(&self, project_id: ProjectId, account_id: &AccountId) -> AccountTickets{
-        let project_account_tickets = self.project_account_tickets.get(&project_id)
-                                                        .expect("No project found");
-        let account_tickets = project_account_tickets.get(account_id)
-                                                        .expect("Account didn't join whitelist");
-        account_tickets
+    /// Return an AccountTickets object if project_id & account_id existed. 
+    /// If project_id doesn't exist -> panic. 
+    /// If accoung_id doesn't exist -> None.
+    pub fn unwrap_project_account_ticket(&self, project_id: ProjectId, account_id: &AccountId) -> Option<AccountTickets>{
+        let project_account_tickets = self.get_project_account_ticket_or_panic(project_id);
+        project_account_tickets.get(account_id)
     }
 }
 

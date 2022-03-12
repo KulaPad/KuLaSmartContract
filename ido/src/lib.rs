@@ -180,11 +180,22 @@ impl IDOContract{
     #[payable]
     pub fn buy_token(&mut self, project_id: ProjectId)-> Balance {
         
-        let mut project_account_token_sales = self.unwrap_project_account_token_sales(project_id);     
+        let project_info = self.get_project_or_panic(project_id);
+        assert_project_sale_period(&project_info);
+ 
         let account_id = env::signer_account_id();
-        let must_attach_deposit = self.calculate_must_attach_deposit_amount_by_account_id(&account_id,project_id);
+        let mut project_account_token_sales = self.get_project_account_token_sale_or_panic(project_id);      
+        
+        // Transfer deposit Near to contract owner
+        let account_tickets = self.unwrap_project_account_ticket(project_id, &account_id).unwrap_or(AccountTickets::default());
+        let tickets_win = account_tickets.staking_tickets.win_ticket_ids.len();
+        assert!(tickets_win>0,"Account did not win the whitelist");
+
+        let must_attach_deposit = project_info.token_sale_rate
+                                        .multiply(project_info.token_amount_per_sale_slot as u128)
+                                        *(tickets_win as u128);
         let deposit_amount = env::attached_deposit();
-        assert_eq!(deposit_amount,must_attach_deposit.0,"Must deposit {} NEAR",must_attach_deposit.0);
+        assert_eq!(deposit_amount,must_attach_deposit,"Must deposit {} NEAR",must_attach_deposit);
         
         // TODO: Increase total fund of NEAR that user deposited for this project to buy token
 
@@ -221,7 +232,7 @@ impl IDOContract{
             
         
         // Transfer deposit Near to contract owner
-        let account_tickets = self.unwrap_project_account_ticket(project_id, &account_id);
+        let account_tickets = self.unwrap_project_account_ticket(project_id, &account_id).unwrap_or(AccountTickets::default());
         let tickets_win = account_tickets.staking_tickets.win_ticket_ids.len();
         assert!(tickets_win>0,"Account did not win the whitelist");
 
@@ -260,8 +271,8 @@ impl IDOContract{
     /// Usecase 1: Display on the right section of staking page - https://web-app-1vi.pages.dev/#/staking
     ///  * Input: locked_amount, locked_timestamp
     ///  * Output: TierInfo: Tier, Staking Tickets, Allocation
-    pub fn get_staking_tier_info(&self, locked_amount: U64, locked_timestamp: Timestamp) -> TierInfoJson {
-        self.internal_get_staking_tier_info(locked_amount.into(), locked_timestamp, None)
+    pub fn get_staking_tier_info(&self, locked_amount: U64, locked_timestamp: Timestamp, calculating_timestamp: Option<Timestamp>) -> TierInfoJson {
+        self.internal_get_staking_tier_info(locked_amount.into(), locked_timestamp, calculating_timestamp)
     }
      
     /// Usecase 2: Display on project details
