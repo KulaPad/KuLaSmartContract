@@ -39,6 +39,10 @@ impl Rate {
         amount * self.numberator as u128 / self.denominator as u128
     }
 
+    pub(crate) fn devided_by(&self, amount: u128) -> u128 {
+        amount * self.denominator as u128 / self.numberator as u128
+    }
+
     pub(crate) fn get_rate(&self) -> f64 {
         self.numberator as f64 / self.denominator as f64
     }
@@ -134,6 +138,11 @@ impl ProjectInfo {
         self.status == ProjectStatus::Sales && self.sale_start_date <= current_time && current_time <= self.sale_end_date
     }
 
+    pub(crate) fn is_in_distribution_period(&self) -> bool {
+        let current_time = get_current_time();
+        self.status == ProjectStatus::Distribution && self.sale_end_date <= current_time
+    }
+
     pub(crate) fn get_total_sales_slots(&self) -> TicketAmount {
         (self.token_raised_amount / self.token_amount_per_sale_slot as u64) as u32
     }
@@ -203,6 +212,7 @@ impl IDOContract{
             ProjectStatus::Sales => {
                 assert!(project.sale_end_date < current_time, "Cannot change project's status to Distribution.");
                 project.status = ProjectStatus::Distribution;
+                self.internal_distribute_token_to_users(project_id);
             }
             _ => panic!("Unable to change project status.")
         }
@@ -228,21 +238,51 @@ impl IDOContract{
 
     }
 
-    pub fn update_project_sales_date(&mut self, project_id: ProjectId, new_sale_start_date: Option<Timestamp>, new_sale_end_date: Option<Timestamp>) {
+    pub fn update_project_sales_date(&mut self, project_id: ProjectId) {
         assert_eq!(self.owner_id, env::signer_account_id(), "You are not allowed to update this project");
 
         let mut project_info = self.projects.get(&project_id).expect("No project found");
 
         let a_half_of_sales_period = (project_info.sale_end_date - project_info.sale_start_date) / 2;
         let current_time = env::block_timestamp();
+        let time_to_change: i128 = current_time as i128 - project_info.sale_start_date as i128 - a_half_of_sales_period as i128;
 
-        project_info.whitelist_start_date -= a_half_of_sales_period;
-        project_info.whitelist_end_date = a_half_of_sales_period;
-        project_info.sale_start_date = new_sale_start_date.unwrap_or(current_time - a_half_of_sales_period);
-        project_info.sale_end_date = new_sale_end_date.unwrap_or(current_time + a_half_of_sales_period);
+        println!("Current time: {}", current_time);
+        println!("Sales start: {}", project_info.sale_start_date);
+        println!("Period: {}", a_half_of_sales_period);
+        println!("To be change: {}", time_to_change);
+        
+        project_info.whitelist_start_date = (project_info.whitelist_start_date as i128 + time_to_change) as u64;
+        project_info.whitelist_end_date = (project_info.whitelist_end_date as i128 + time_to_change) as u64;
+        project_info.sale_start_date = (project_info.sale_start_date as i128 + time_to_change) as u64;
+        project_info.sale_end_date = (project_info.sale_end_date as i128 + time_to_change) as u64;
 
         self.projects.insert(&project_id, &project_info);
+    }
 
+    pub fn update_project_sales_date_to_end(&mut self, project_id: ProjectId) {
+        assert_eq!(self.owner_id, env::signer_account_id(), "You are not allowed to update this project");
+
+        let mut project_info = self.projects.get(&project_id).expect("No project found");
+        let current_timestamp = get_current_time();
+        if project_info.sale_end_date <= current_timestamp {
+            env::log("The sales end time is correct. No need to update.".as_bytes());
+        }
+
+        let time_period_after_sales_end = project_info.sale_end_date - current_timestamp + 1000;
+
+        println!("Sales end date: {}, Current time: {}, Period: {}", project_info.sale_end_date, current_timestamp, time_period_after_sales_end);
+        println!("Whitelist start date: {}", project_info.whitelist_start_date);
+        println!("Whitelist end date: {}", project_info.whitelist_end_date);
+        println!("Sales start date: {}", project_info.sale_start_date);
+        println!("Sales end date: {}", project_info.sale_end_date);
+        
+        project_info.whitelist_start_date -= time_period_after_sales_end;
+        project_info.whitelist_end_date -= time_period_after_sales_end;
+        project_info.sale_start_date -= time_period_after_sales_end;
+        project_info.sale_end_date -= time_period_after_sales_end;
+
+        self.projects.insert(&project_id, &project_info);
     }
 
     pub fn update_project_status(&mut self, project_id: ProjectId, new_status: ProjectStatus) {
@@ -311,5 +351,20 @@ impl IDOContract {
 
     pub(crate) fn internal_has_project(&self, project_id: ProjectId) -> bool{
         self.projects.get(&project_id).is_some()
+    }
+    
+    pub(crate) fn internal_distribute_token_to_users(&mut self, project_id: ProjectId) {
+        // Get project account token sales
+        let project = self.get_project_or_panic(project_id);
+        let accounts_for_token_sales = self.get_project_account_token_sale_or_panic(project_id);
+
+        for (account_id, token_sales) in &accounts_for_token_sales.to_vec() {
+            // Deposit near amount
+            // Token price
+            // Token amount
+        }
+        // Update token unlocked amount
+
+
     }
 }

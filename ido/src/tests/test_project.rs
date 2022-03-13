@@ -1,7 +1,7 @@
 use crate::tests::test_utils::*;
 use crate::tests::test_emulator::*;
 use crate::structures::project::*;
-use near_sdk::{Timestamp};
+use crate::*;
 
 pub(crate) fn get_project_1() -> ProjectInfo {
     ProjectInfo {
@@ -68,4 +68,56 @@ fn test_create_sample_projects() {
     // let projects = emulator.contract.get_projects(None, None, None); 
 
     // assert_eq!(10, projects.len(), "The number of projects in the contract is not correct!");
+}
+
+#[test]
+fn test_update_project_sales_date_to_end() {
+    let mut emulator = Emulator::default();
+
+    emulator.contract.create_sample_projects();
+
+    let whitelist_start_date = 1640995200000000000;
+    let whitelist_end_date = 1641250800000000000;
+    let sale_start_date = 1641254400000000000;
+    let sale_end_date = 1641340800000000000;
+    let status = ProjectStatus::Preparation;
+
+    let mut project = get_project_1();
+    project.whitelist_start_date = whitelist_start_date;
+    project.whitelist_end_date = whitelist_end_date;
+    project.sale_start_date = sale_start_date;
+    project.sale_end_date = sale_end_date;
+    project.status = status.clone();
+
+    let project_id = emulator.contract.create_project(project);
+    let project = emulator.contract.get_project_or_panic(project_id);
+
+    // Preparation
+    assert_eq!(ProjectStatus::Preparation, project.status);
+
+    // Whitelist
+    let before_whitelist_time = decrease_timestamp(&whitelist_start_date, 1, 0, 0, 0);
+    emulator.set_block_timestamp(before_whitelist_time);
+    emulator.set_account_id_and_desposit(owner(), owner(), 0);
+    emulator.contract.update_project_whitelist_date(project_id, None, None);
+
+    println!("Project's status: {:?}, Current Time: {}, Whitelist Start Time: {}", project.status, before_whitelist_time, whitelist_start_date);
+    emulator.contract.change_project_status(project_id);
+    
+    let project = emulator.contract.get_project_or_panic(project_id);
+    assert_eq!(ProjectStatus::Whitelist, project.status);
+
+    // Sales
+    emulator.contract.update_project_sales_date(project_id);
+    emulator.contract.change_project_status(project_id);
+
+    let project = emulator.contract.get_project_or_panic(project_id);
+    assert_eq!(ProjectStatus::Sales, project.status);
+
+    // Distribution
+    emulator.contract.update_project_sales_date_to_end(project_id);
+    emulator.contract.change_project_status(project_id);
+
+    let project = emulator.contract.get_project_or_panic(project_id);
+    assert_eq!(ProjectStatus::Distribution, project.status);
 }

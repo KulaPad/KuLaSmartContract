@@ -20,18 +20,20 @@ use crate::structures::ticket::*;
 use crate::structures::staking::*;
 use crate::utils::*;
 use crate::staking_contract::*;
+use crate::ft_contract::*;
 
 mod structures;
 mod utils;
 mod tests;
 mod staking_contract;
+mod ft_contract;
 
 pub const DEFAULT_PAGE_SIZE: u64 = 100;
 pub const TOKEN_DECIMAL: u8 = 8;
 pub const STAKING_CONTRACT_ID: &str = "staking-kulapad.testnet";
 
 pub const GAS_FUNCTION_CALL: u64 = 5_000_000_000_000;
-pub const GAS_FUNCTION_CALL_UPDATE_STAKING_TIER: u64 = 30_000_000_000_000;
+pub const GAS_FUNCTION_CALL_UPDATE_STAKING_TIER: u64 = 50_000_000_000_000;
 pub const NO_DEPOSIT: u128 = 0;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -260,11 +262,6 @@ impl IDOContract{
             None
         }
         
-    }
-
-    /// User can claim their bought unlocked token after sales.
-    pub fn claim(&mut self, project_id: ProjectId) {
-
     }
 
     /// Usecase 1: Display on the right section of staking page - https://web-app-1vi.pages.dev/#/staking

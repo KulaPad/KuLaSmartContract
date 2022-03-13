@@ -45,6 +45,7 @@ impl IDOContract {
         )).into()
     }
 
+    #[private]
     pub fn resolve_get_account_info_for_updating_tickets(&mut self, project_id: ProjectId, account_id: AccountId) -> bool {
         assert_eq!(
             env::promise_results_count(),

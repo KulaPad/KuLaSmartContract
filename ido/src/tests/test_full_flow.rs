@@ -173,7 +173,7 @@ fn test_happy_case() {
 
     // Close whitelist
     emulator.set_account_id_and_desposit(owner(), owner(), 0);
-    emulator.contract.update_project_sales_date(project_id, None, None);
+    emulator.contract.update_project_sales_date(project_id);
 
     println!("update_project_sales_date");
 
@@ -256,4 +256,13 @@ fn test_key_storage() {
     println!("{:?}", StorageKey::ProjectAccountTicketInnerKey(u64::MAX).try_to_vec().unwrap());
 
     assert!(false);
+}
+
+#[test]
+fn test_rate() {
+    let mut emulator = Emulator::default();
+    let rate = Rate::new(1, 100);
+
+    assert_eq!(1000, rate.multiply(100000));
+    assert_eq!(100000, rate.devided_by(1000));
 }
