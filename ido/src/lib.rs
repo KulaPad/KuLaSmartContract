@@ -31,6 +31,7 @@ pub const TOKEN_DECIMAL: u8 = 8;
 pub const STAKING_CONTRACT_ID: &str = "staking-kulapad.testnet";
 
 pub const GAS_FUNCTION_CALL: u64 = 5_000_000_000_000;
+pub const GAS_FUNCTION_CALL_UPDATE_STAKING_TIER: u64 = 30_000_000_000_000;
 pub const NO_DEPOSIT: u128 = 0;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -191,9 +192,7 @@ impl IDOContract{
         let tickets_win = account_tickets.staking_tickets.win_ticket_ids.len();
         assert!(tickets_win > 0,"Account did not win the whitelist");
 
-        let must_attach_deposit = project_info.token_sale_rate
-                                        .multiply(project_info.token_amount_per_sale_slot as u128)
-                                        *(tickets_win as u128);
+        let must_attach_deposit = project_info.get_sales_amount(tickets_win as u32);
         let deposit_amount = env::attached_deposit();
         assert_eq!(deposit_amount, must_attach_deposit, "Must deposit {} NEAR", must_attach_deposit);
         
@@ -223,9 +222,7 @@ impl IDOContract{
                 &&(project_info.sale_end_date >= current_time),
                 "Project isn't on sale time");
 
-        let must_attach_deposit = project_info.token_sale_rate
-                                        .multiply(project_info.token_amount_per_sale_slot as u128)
-                                        *(tickets_win as u128);
+        let must_attach_deposit = project_info.get_sales_amount(tickets_win as u32);
 
         U128(must_attach_deposit)
     }

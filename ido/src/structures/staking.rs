@@ -155,6 +155,8 @@ pub struct ProjectWhitelistInfo {
     pub no_of_social_tickets: TicketAmount,
     pub no_of_referral_tickets: TicketAmount,
     pub no_of_allocations: TicketAmount,
+    pub staking_tickets: Vec<TicketNumber>,
+    pub win_tickets: Vec<TicketNumber>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -325,6 +327,8 @@ impl IDOContract {
         whitelist_info.no_of_social_tickets = ticket_info.social_tickets.eligible_tickets;
         whitelist_info.no_of_referral_tickets = ticket_info.referral_tickets.eligible_tickets;
         whitelist_info.no_of_allocations = ticket_info.allocations;
+        whitelist_info.staking_tickets = ticket_info.staking_tickets.ticket_ids.to_vec();
+        whitelist_info.win_tickets = ticket_info.staking_tickets.win_ticket_ids.to_vec();
 
         whitelist_info
     }

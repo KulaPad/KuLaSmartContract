@@ -117,3 +117,27 @@ fn test_internal_get_staking_tier_info_4() {
 
     test_internal_get_staking_tier_info(locked_amount, locked_timestamp, locked_days, expected_staking_tier, expected_staking_tickets, expected_allocations);
 }
+
+#[test]
+fn test_get_staking_tier_info()
+{
+    let locked_amount: u64 = 1000_00_000_000;
+    let locked_timestamp: Timestamp = 1649796512000000000;
+    let locked_days: u32 = 10;
+    let expected_staking_tier = StakingTier::Tier2;
+    let expected_staking_tickets: TicketAmount = 6;
+    let expected_allocations: TicketAmount = 0;
+    let current_timestamp = decrease_timestamp(&locked_timestamp, locked_days as u16, 0, 0, 0);
+
+    let mut emulator = Emulator::default();
+    emulator.set_block_timestamp(current_timestamp);
+
+    let tier_info = emulator.contract.get_staking_tier_info(U64::from(1000_00_000_000), locked_timestamp, None);
+    
+    assert_eq!(expected_staking_tier, tier_info.tier);
+    assert_eq!(U64::from(locked_amount), tier_info.locked_amount);
+    assert_eq!(locked_days, tier_info.locked_days);
+    assert_eq!(current_timestamp, tier_info.calculating_time);
+    assert_eq!(expected_staking_tickets, tier_info.no_of_staking_tickets);
+    assert_eq!(expected_allocations, tier_info.no_of_allocations);
+}

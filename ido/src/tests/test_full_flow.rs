@@ -76,6 +76,9 @@ fn test_happy_case() {
     assert!(projects_in_account.contains(&project_id));
     assert_eq!(1, accounts_and_tickets_in_project.len() as u32);
 
+    let project_info = emulator.contract.get_project(project_id).unwrap();
+    assert_eq!(1, project_info.whitelist_accounts);
+
     // User B registers whitelist
 
     // User C do not register whitelist

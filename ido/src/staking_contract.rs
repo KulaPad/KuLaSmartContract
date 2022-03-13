@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "near_sdk::serde")]
 pub struct AccountJson {
     pub account_id: AccountId,
@@ -41,7 +41,7 @@ impl IDOContract {
             account_id,
             &env::current_account_id(),
             NO_DEPOSIT,
-            GAS_FUNCTION_CALL
+            GAS_FUNCTION_CALL_UPDATE_STAKING_TIER
         )).into()
     }
 
@@ -58,12 +58,21 @@ impl IDOContract {
             PromiseResult::Failed => false,
             PromiseResult::Successful(result) => {
                 let account_info = near_sdk::serde_json::from_slice::<AccountJson>(&result).unwrap();
-                self.process_update_staking_tickets(project_id, account_id, account_info)
+                
+                env::log(format!("Prepared gas: {}, Used gas: {}", env::prepaid_gas(), env::used_gas()).as_bytes());
+
+                let result = self.process_update_staking_tickets(project_id, account_id, account_info);
+
+                env::log(format!("Prepared gas: {}, Used gas: {}", env::prepaid_gas(), env::used_gas()).as_bytes());
+
+                result
             },
         }
     }
 
     pub(crate) fn process_update_staking_tickets(&mut self, project_id: ProjectId, account_id: AccountId, staking_account_info: AccountJson) -> bool {
+        env::log(format!("process_update_staking_tickets(project_id: {}, account_id: {}, staking_info: {:#?})", project_id, account_id, staking_account_info).as_bytes());
+
         // Verify staking_info.account_id vs account_id 
         assert_eq!(account_id.clone(), staking_account_info.account_id, "The staking account is not equal to current account id.");
 

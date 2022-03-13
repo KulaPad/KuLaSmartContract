@@ -111,11 +111,16 @@ pub struct ProjectInfoJson {
     pub token_decimal: u8,
     pub token_amount_per_sale_slot: u32,
     pub fund_symbol: String,
+    pub total_fund_received: U128,
     pub sale_type: SaleType,
     pub hard_cap: u64,
     pub status: ProjectStatus,
-    pub whitelist_accounts: u16,
+    pub whitelist_accounts: u64,
     pub configuration: ProjectConfiguration,
+    pub total_allocations: TicketAmount,
+    pub total_staking_tickets: TicketNumber,
+    pub total_social_tickets: TicketNumber,
+    pub total_referral_tickets: TicketNumber,
 }
 
 impl ProjectInfo {
@@ -135,6 +140,18 @@ impl ProjectInfo {
 
     pub(crate) fn get_available_sales_slots(&self) -> TicketAmount {
         self.get_total_sales_slots() - self.total_allocations
+    }
+
+    pub(crate) fn get_sales_amount(&self, slots: u32) -> Balance {
+        let amount_of_slot: u32 = self.token_amount_per_sale_slot;
+        let unit_multiple: Balance = ONE_NEAR;
+
+        // TODO: TBD
+        // if self.fund_contract_id.is_some() {
+        //     unit_multiple = self.fund_token_decimal;
+        // }
+
+        self.token_sale_rate.multiply(unit_multiple * amount_of_slot as u128 * slots as u128)
     }
 }
 
@@ -257,6 +274,8 @@ impl IDOContract {
 
     pub(crate) fn internal_get_project(&self, project_id: ProjectId, project_info: Option<ProjectInfo>) -> Option<ProjectInfoJson> {
         if let Some(project) = project_info {
+            let whitelist_accounts = self.get_project_account_ticket_or_panic(project_id).len();
+
             Some(ProjectInfoJson {
                 id: project_id,
                 name: project.name,
@@ -276,9 +295,14 @@ impl IDOContract {
                 token_amount_per_sale_slot: project.token_amount_per_sale_slot,
                 hard_cap: project.token_sale_rate.multiply(project.token_raised_amount as u128) as u64,
                 sale_type: project.sale_type,
+                total_fund_received: U128::from(project.total_fund_received),
                 status: project.status,
                 configuration: project.configuration,
-                whitelist_accounts: 0,
+                whitelist_accounts: whitelist_accounts,
+                total_allocations: project.total_allocations,
+                total_staking_tickets: project.total_staking_tickets,
+                total_social_tickets: project.total_social_tickets,
+                total_referral_tickets: project.total_referral_tickets,
             })
         } else {
             None
