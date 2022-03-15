@@ -27,6 +27,8 @@ impl From<Account> for UpgradableAccount {
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Account {
+    pub lock_balance: Balance,
+    pub unlock_timestamp: Timestamp,
     pub stake_balance: Balance,
     pub pre_stake_balance: Balance,
     pub pre_reward: Balance,
@@ -40,6 +42,8 @@ pub struct Account {
 #[serde(crate = "near_sdk::serde")]
 pub struct AccountJson {
     pub account_id: AccountId,
+    pub lock_balance: U128,
+    pub unlock_timestamp: Timestamp,
     pub stake_balance: U128,
     pub unstake_balance: U128,
     pub reward: U128,
