@@ -34,7 +34,21 @@ impl FungibleTokenReceiver for StakingContract {
         assert!(!self.paused, "ERR_CONTRACT_PAUSED");
         assert_eq!(self.ft_contract_id, env::predecessor_account_id(), "ERR_NOT_VALID_FT_CONTRACT");
 
-        self.internal_deposit_and_stake(sender_id, amount.0);
+        // Staking
+        self.internal_deposit_and_stake(sender_id.clone(), amount.0);
+
+        // Locking
+        let args: Vec<&str> = msg.split(":").collect();
+        if args.len() >= 1 {
+            match args[0] {
+                "lock" => {
+                    let locked_time: u64 = args[1].trim().parse().unwrap();
+                    self.internal_lock(sender_id.clone(), amount.0, locked_time);
+                    env::log(format!("Lock amount of {} KULA for account {} in {}.", amount.0, sender_id, locked_time).as_bytes());
+                },
+                _ => {}
+            }
+        }
 
         // return amount not used
         PromiseOrValue::Value(U128(0))
