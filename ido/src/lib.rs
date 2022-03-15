@@ -1,52 +1,370 @@
-
+use near_sdk::{init, env, near_bindgen, ext_contract};
+use near_sdk::{PanicOnDefault, Timestamp, Balance, AccountId, CryptoHash, Promise, PromiseOrValue, PromiseResult, EpochHeight};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{init, env, near_bindgen,PanicOnDefault};
+use near_sdk::collections::{UnorderedMap, UnorderedSet, LookupMap};
+use near_sdk::json_types::{U128, U64};
 
-use near_sdk::collections::{UnorderedMap, LazyOption};
-use near_sdk::{AccountId, collections::LookupMap};
+pub type ProjectId = u64;
+pub type TicketAmount = u32;
+pub type TicketNumber = u64;
+pub type TicketId = String;
+pub type AccountTicketsType = UnorderedMap<AccountId, AccountTickets>;
+pub type AccountTokenSalesType = UnorderedMap<AccountId, AccountTokenSales>;
+pub type ProjectTicketType = UnorderedMap<TicketId, AccountId>;
+pub type AccountProjectType = UnorderedSet<ProjectId>;
 
+use crate::structures::project::*;
+use crate::structures::account::*;
+use crate::structures::ticket::*;
+use crate::structures::staking::*;
+use crate::utils::*;
+use crate::staking_contract::*;
+use crate::ft_contract::*;
+
+mod structures;
+mod utils;
+mod tests;
+mod staking_contract;
+mod ft_contract;
+
+pub const DEFAULT_PAGE_SIZE: u64 = 100;
+pub const TOKEN_DECIMAL: u8 = 8;
+pub const STAKING_CONTRACT_ID: &str = "staking-kulapad.testnet";
+
+pub const GAS_FUNCTION_CALL: u64 = 5_000_000_000_000;
+pub const GAS_FUNCTION_CALL_UPDATE_STAKING_TIER: u64 = 50_000_000_000_000;
+pub const NO_DEPOSIT: u128 = 0;
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub enum StorageKey {
+    ProjectKey,
+    ProjectAccountTicketKey,
+    ProjectAccountTicketInnerKey(ProjectId),
+    ProjectTokenSaleKey,
+    ProjectTokenSaleInnerKey(ProjectId),
+    ProjectTicketKey,
+    ProjectTicketInnerKey(ProjectId),
+    AccountProjectKey,
+    AccountProjectKeyInnerKey { 
+        account_id_hash: CryptoHash
+    },
+    TierKey,
+    TierTicketInnerKey (String),
+    TierAllocationInnerKey (String),
+}
 
 #[near_bindgen]
 #[derive(PanicOnDefault, BorshDeserialize, BorshSerialize)]
-pub struct Contract{
+pub struct IDOContract{
+    /// The owner of this contract.
+    pub owner_id: AccountId,
+
+    /// The account id of staking contract. It used for cross-contract call
+    pub staking_contract_id: AccountId,
+
+    /// Stores the list of projects that belongs to this IDO contract.
+    pub projects: UnorderedMap<ProjectId, ProjectInfo>,
+
+    /// Stores the list of tickets that belongs to the specific account for each project.
+    /// The user tickets info was re-calculated every time user access the UI, trigger the calculate_user_tickets()
+    pub project_account_tickets: LookupMap<ProjectId, AccountTicketsType>,
+
+    /// Stores the list of token sales of an account in each project.
+    pub project_account_token_sales: LookupMap<ProjectId, AccountTokenSalesType>,
+
+    /// Stores the list of tickets that belongs to each project.
+    /// Ex: Project 1: Tickets [{Id: L1, Account Id: account1.testnet }, {Id: S2, Account Id: account2.testnet }, ...]
+    /// The user tickets were stored here during re-calculate
+    pub project_tickets: LookupMap<ProjectId, ProjectTicketType>,
+    
+    /// The list of projects that that account has registered whitelist.
+    pub account_projects: LookupMap<AccountId, AccountProjectType>,
+
+    /// The information of tiers that helps to identify the number of tickets to allocation to a specific user when they joined to a project
+    pub tiers: UnorderedMap<StakingTier, TierInfo>,
 }
+
 #[near_bindgen]
-impl Contract{
-}
-
-
-impl Contract{
-}
-
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use near_sdk::MockedBlockchain;
-    use near_sdk::{testing_env, VMContext, AccountId};
-    // part of writing unit tests is setting up a mock context
-    // in this example, this is only needed for env::log in the contract
-    // this is also a useful list to peek at when wondering what's available in env::*
-    fn get_context(input: Vec<u8>, is_view: bool, predecessor: AccountId) -> VMContext {
-        VMContext {
-            current_account_id: "alice.testnet".to_string(),
-            signer_account_id: "robert.testnet".to_string(),
-            signer_account_pk: vec![0, 1, 2],
-            predecessor_account_id: predecessor,
-            input,
-            block_index: 0,
-            block_timestamp: 0,
-            account_balance: 0,
-            account_locked_balance: 0,
-            storage_usage: 0,
-            attached_deposit: 0,
-            prepaid_gas: 10u64.pow(18),
-            random_seed: vec![0, 1, 2],
-            is_view,
-            output_data_receivers: vec![],
-            epoch_height: 19,
+impl IDOContract{
+    #[init]
+    pub fn new(owner_id: AccountId, staking_contract_id: Option<AccountId>) -> Self {
+        env::log(format!("Creating contract...").as_bytes());
+        Self {
+            owner_id,
+            staking_contract_id: staking_contract_id.unwrap_or(STAKING_CONTRACT_ID.to_string()),
+            projects: UnorderedMap::new(get_storage_key(StorageKey::ProjectKey)),
+            project_account_tickets: LookupMap::new(get_storage_key(StorageKey::ProjectTicketKey)),
+            project_account_token_sales: LookupMap::new(get_storage_key(StorageKey::ProjectTokenSaleKey)),
+            project_tickets: LookupMap::new(get_storage_key(StorageKey::ProjectTicketKey)),
+            account_projects: LookupMap::new(get_storage_key(StorageKey::AccountProjectKey)),
+            tiers: initialize_tiers(TOKEN_DECIMAL),
         }
     }
+
+    #[private]
+    #[init(ignore_state)]
+    pub fn migrate(owner_id: AccountId, staking_contract_id: Option<AccountId>) -> Self {
+        env::log(format!("Migrating contract...").as_bytes());
+        let contract = IDOContract::new(owner_id, staking_contract_id);
+        env::log(format!("Contract migrated.").as_bytes());
+        contract
+    }
+
+    pub fn get_owner_id(&self) -> AccountId {
+        self.owner_id.clone()
+    }
+
+    pub fn set_owner_id(&mut self, owner_id: AccountId) {
+        assert_eq!(env::signer_account_id(), self.owner_id, "Just owner can do this action.");
+
+        self.owner_id = owner_id;
+    }
+    
+    /// Register an account for a project's whitelist
+    /// User can only register the whitelist on the whitelist period of the project
+    /// Account id is env::signer_account_id()
+    pub fn register_whitelist(&mut self, project_id: ProjectId) {
+        let project_info = self.get_project_info(&project_id);                         
+        assert_eq!(project_info.status, ProjectStatus::Whitelist,"Project isn't on whitelist");
+        
+        assert!(project_info.is_in_whitelist_period(), "Project isn't on whitelist time");
+
+        let account_id = env::signer_account_id();
+        let mut account_projects = self.unwrap_account_project(&account_id);
+
+        assert!(!account_projects.contains(&project_id),"Already register whitelist this project");
+        account_projects.insert(&project_id);
+        self.account_projects.insert(&account_id,&account_projects);
+
+        // Insert into project_account_tickets -> Use unwrap because of making sure that it has been inserted when project created.
+        let mut accounts_in_project = self.project_account_tickets.get(&project_id).unwrap();
+        accounts_in_project.insert(&account_id, &AccountTickets::default());
+        self.project_account_tickets.insert(&project_id, &accounts_in_project);
+    }
+
+    /// Check an account wherever registered for a project or not
+    pub fn is_whitelist(&self, project_id: ProjectId) -> bool {
+
+        self.assert_project_exist(project_id);
+
+        let account_id = env::signer_account_id();
+        let projects_in_account = self.account_projects.get(&account_id);
+
+        if let Some(projects_in_account) = projects_in_account {
+            if projects_in_account.contains(&project_id){
+                return true;
+            }
+        }
+        
+        false
+    }
+
+    /// Check an account wherever registered for a project or not
+    pub fn is_whitelist_by_account_id(&self, account_id:AccountId,project_id: ProjectId) -> bool {
+
+        self.assert_project_exist(project_id);
+
+        
+        let projects_in_account = self.account_projects.get(&account_id);
+
+        if let Some(projects_in_account) = projects_in_account {
+            if projects_in_account.contains(&project_id){
+                return true;
+            }
+        }
+        
+        false
+    }
+
+    /// User deposits the exact acount of funding to buy token
+    /// Account id is env::signer_account_id()
+    /// This function support NEAR deposit only
+    #[payable]
+    pub fn buy_token(&mut self, project_id: ProjectId)-> Balance {
+        
+        let mut project_info = self.get_project_or_panic(project_id);
+        assert_project_sale_period(&project_info);
+ 
+        let account_id = env::signer_account_id();
+        let mut project_account_token_sales = self.get_project_account_token_sale_or_panic(project_id);      
+        
+        // Transfer deposit Near to contract owner
+        let account_tickets = self.unwrap_project_account_ticket(project_id, &account_id).unwrap_or(AccountTickets::default());
+        let tickets_win = account_tickets.staking_tickets.win_ticket_ids.len();
+        assert!(tickets_win > 0,"Account did not win the whitelist");
+
+        let must_attach_deposit = project_info.get_sales_amount(tickets_win as u32);
+        let deposit_amount = env::attached_deposit();
+        assert_eq!(deposit_amount, must_attach_deposit, "Must deposit {} NEAR", must_attach_deposit);
+        
+        // TODO: Increase total fund of NEAR that user deposited for this project to buy token
+        project_info.total_fund_received += must_attach_deposit;
+
+        project_account_token_sales.insert(&account_id,&AccountTokenSales{
+            funding_amount: deposit_amount,
+            token_unlocked_amount: 0,
+            token_locked_amount: 0,
+            token_withdrawal_amount: 0,
+        });
+        self.project_account_token_sales.insert(&project_id,&project_account_token_sales);
+        
+        self.projects.insert(&project_id, &project_info);
+
+        // Return deposited_near
+        deposit_amount
+    }
+
+    pub fn calculate_must_attach_deposit_amount_by_tickets_win(&self, project_id: ProjectId, tickets_win: usize) -> U128{
+
+        let project_info = self.projects.get(&project_id).expect("No project found");
+        assert!(project_info.status == ProjectStatus::Sales,"Project is not on sale");
+        let current_time = env::block_timestamp();
+        assert!((project_info.sale_start_date <= current_time)
+                &&(project_info.sale_end_date >= current_time),
+                "Project isn't on sale time");
+
+        let must_attach_deposit = project_info.get_sales_amount(tickets_win as u32);
+
+        U128(must_attach_deposit)
+    }
+
+
+    pub fn calculate_must_attach_deposit_amount_by_account_id(&self, account_id: &AccountId, project_id: ProjectId) -> U128{
+        // Transfer deposit Near to contract owner
+        let account_tickets = self.unwrap_project_account_ticket(project_id, &account_id).unwrap_or(AccountTickets::default());
+        let tickets_win = account_tickets.staking_tickets.win_ticket_ids.len();
+        assert!(tickets_win>0,"Account did not win the whitelist");
+
+        let must_attach_deposit = self.calculate_must_attach_deposit_amount_by_tickets_win(project_id,tickets_win);
+        must_attach_deposit
+    }
+
+    /// Get token sales info of an account. If it does not exits, return None.
+    pub fn get_account_token_sale_info(& self, project_id: ProjectId) -> Option<JsonAccountTokenSales> {
+        let account_id = env::signer_account_id();
+        let project_account_token_sales = self.project_account_token_sales.get(&project_id);
+        if let Some(project_account_token_sales) = project_account_token_sales{
+            let account_token_sales = project_account_token_sales.get(&account_id);
+            if let Some(account_token_sales)= account_token_sales{
+                Some(
+                    JsonAccountTokenSales{
+                        funding_amount: U128::from(account_token_sales.funding_amount),
+                        token_unlocked_amount: U128::from(account_token_sales.token_unlocked_amount),
+                        token_locked_amount: U128::from(account_token_sales.token_locked_amount),
+                        token_withdrawal_amount: U128::from(account_token_sales.token_withdrawal_amount)
+                    }
+                )
+            }else{
+                None
+            }
+        }else{
+            None
+        }
+        
+    }
+
+    /// Usecase 1: Display on the right section of staking page - https://web-app-1vi.pages.dev/#/staking
+    ///  * Input: locked_amount, locked_timestamp
+    ///  * Output: TierInfo: Tier, Staking Tickets, Allocation
+    pub fn get_staking_tier_info(&self, locked_amount: U64, locked_timestamp: Timestamp, calculating_timestamp: Option<Timestamp>) -> TierInfoJson {
+        self.internal_get_staking_tier_info(locked_amount.into(), locked_timestamp, calculating_timestamp)
+    }
+     
+    /// Usecase 2: Display on project details
+    ///  * Input: ProjectId, AccountId
+    ///  * Output: ProjectAccountInfoJson: Project, Status, Account, WhitelistInfo, SaleInfo, DistributionInfo
+    pub fn get_project_account_info(&self, project_id: ProjectId, account_id: AccountId) -> ProjectAccountInfoJson {
+        
+        self.internal_get_project_staking_tier_info(project_id, account_id)
+    }
+
+    pub fn update_staking_tickets(&mut self, project_id: ProjectId) -> PromiseOrValue<bool> {
+        let account_id = env::signer_account_id();
+
+        // Verify project & account before calling to staking smart contrct
+        let project = self.projects.get(&project_id);
+        if let Some(project) = project {
+            assert_project_whitelist_period(&project);
+
+            // Start processing
+            return self.internal_update_staking_tickets(project_id, account_id);
+        }
+        
+        panic_project_not_exist();
+        PromiseOrValue::Value(false)
+    }
+
+    pub fn close_project_whitelist(&mut self, project_id: ProjectId) {
+        println!("close_project_whitelist - inside");
+        // Get project
+        let mut project = self.get_project_or_panic(project_id);
+        let current_time = get_current_time();
+
+        println!("close_project_whitelist - get_current_time");
+        // Validate & update status to Sale -> 
+        assert!(project.status == ProjectStatus::Whitelist && project.whitelist_end_date <= current_time, "{}", format!("The project's status ({:?}) is not correct or the whitelist period (End: {} - Current: {}) is not end.", project.status, project.whitelist_end_date, current_time));
+        
+        // Random list of tickets
+        let tickets = self.get_project_ticket_or_panic(project_id);
+        let mut account_tickets = self.get_project_account_ticket_or_panic(project_id);
+        let no_of_win_tickets = std::cmp::min(project.total_staking_tickets, project.get_available_sales_slots() as u64);
+
+        println!("close_project_whitelist - no_of_win_tickets: {}", no_of_win_tickets);
+
+        for i in 0..no_of_win_tickets {
+            let ticket_number = i + 1;
+            let ticket_id = build_ticket_id(TicketType::Staking, ticket_number);
+
+            println!("close_project_whitelist - ticket_id: {}", ticket_id);
+            
+            // let account_id = tickets.get(&ticket_id);
+
+            // println!("close_project_whitelist - tried to get account_id");
+
+            // if let Some(account_id) = account_id {
+            //     println!("close_project_whitelist - account_id: {}", account_id);
+
+            //     let account = account_tickets.get(&account_id);
+            //     if let Some(mut account) = account {
+            //         if account.staking_tickets.ticket_ids.contains(&ticket_number) {
+            //             account.staking_tickets.win_ticket_ids.push(ticket_number);
+
+            //             account_tickets.insert(&account_id, &account);
+            //             self.project_account_tickets.insert(&project_id, &account_tickets);
+            //         }
+            //     }
+            // } else {
+            //     println!("close_project_whitelist - cannot get account_id");
+            // }
+        }
+
+        println!("close_project_whitelist - end of for");
+
+        project.status = ProjectStatus::Sales;
+        self.projects.insert(&project_id, &project);
+    }
+
+    pub fn get_user_tickets(&self) -> AccountId {
+        self.owner_id.clone()
+    }
+
+    /// There 2 type of ticket:
+    /// - VIP ticket: For staking Tier 4: This ticket can always join the campaign sale event
+    /// - normal ticket: This ticket need to pass a lucky round to be chosen
+    ///
+    /// Only the chosen normal ticket can join the sale round
+    ///
+    /// Every one got the WIN ticket can join into the token sale, FCFS
+    pub fn select_win_tickets(&self) -> AccountId {
+        self.owner_id.clone()
+    }
+
+    /// User buy power = max buy amount in USD <=> NEAR
+    /// Base on the winning ticket of user => buy power
+    /// Each winning ticket will have right to buy $100
+    pub fn get_user_buy_power(&self) -> AccountId {
+        self.owner_id.clone()
+    }
+
 }

@@ -6,7 +6,7 @@ pub const FT_TRANSFER_GAS: Gas = 10_000_000_000_000;
 pub const WITHDRAW_CALLBACK_GAS: Gas = 10_000_000_000_000;
 pub const HARVEST_CALLBACK_GAS: Gas = 10_000_000_000_000;
 
-pub trait   FungibleTokenReceiver {
+pub trait FungibleTokenReceiver {
     fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) -> PromiseOrValue<U128>;
 }
 
