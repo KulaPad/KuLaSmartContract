@@ -344,6 +344,7 @@ impl IDOContract{
         }
     }
 
+    #[private]
     pub fn create_sample_projects(&mut self) {
         self.create_project(Self::internal_new_project_1());
         self.create_project(Self::internal_new_project_2());
@@ -355,5 +356,25 @@ impl IDOContract{
         self.create_project(Self::internal_new_project_8());
         self.create_project(Self::internal_new_project_9());
         self.create_project(Self::internal_new_project_10());
+    }
+
+    #[private]
+    pub fn create_sample_project(&mut self, project_no: u8, status: Option<ProjectStatus>) {
+        let mut project: ProjectInfo = match project_no {
+            1 => Self::internal_new_project_1(),
+            2 => Self::internal_new_project_2(),
+            3 => Self::internal_new_project_3(),
+            4 => Self::internal_new_project_4(),
+            5 => Self::internal_new_project_5(),
+            6 => Self::internal_new_project_6(),
+            7 => Self::internal_new_project_7(),
+            8 => Self::internal_new_project_8(),
+            9 => Self::internal_new_project_9(),
+            10 =>Self::internal_new_project_10(),
+            _ => panic!("No project no: {}", project_no)
+        };
+
+        project.status = status.unwrap_or(ProjectStatus::Preparation);
+        self.create_project(project);
     }
 }
