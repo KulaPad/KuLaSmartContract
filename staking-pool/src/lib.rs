@@ -100,8 +100,6 @@ impl StakingContract {
             let before_storage_usage = env::storage_usage();
 
             let new_account = Account {
-                lock_balance: 0,
-                unlock_timestamp: 0,
                 stake_balance: 0,
                 pre_stake_balance: 0,
                 pre_reward: 0,

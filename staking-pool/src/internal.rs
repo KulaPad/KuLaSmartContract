@@ -1,7 +1,3 @@
-use std::thread::yield_now;
-
-use near_sdk::{Timestamp, env::block_timestamp};
-
 use crate::*;
 
 impl StakingContract {
@@ -36,46 +32,12 @@ impl StakingContract {
 
     }
 
-    /// User lock token
-    /// locked_time = 8460000000000000 nanoseconds
-    pub(crate) fn internal_lock(&mut self, account_id: AccountId, amount: Balance, locked_time: u64) {
-
-        // Check account exists
-        let upgradable_account: UpgradableAccount = self.accounts.get(&account_id).unwrap();
-        let mut account = Account::from(upgradable_account);
-
-        assert!(amount <= account.stake_balance - account.lock_balance, "ERR_AMOUNT_MUST_LESS_THAN_BALANCE");
-
-        // update account data
-        account.lock_balance += amount;
-        if account.unlock_timestamp < env::block_timestamp() {
-            account.unlock_timestamp = env::block_timestamp() + locked_time;
-        } else {
-            account.unlock_timestamp += locked_time;
-        }
-        self.accounts.insert(&account_id, &UpgradableAccount::from(account));
-    }
-
-     // User lock token
-     pub(crate) fn internal_unlock(&mut self, account_id: AccountId) {
-
-        // Check account exists
-        let upgradable_account: UpgradableAccount = self.accounts.get(&account_id).unwrap();
-        let mut account = Account::from(upgradable_account);
-
-        assert!(account.unlock_timestamp <= env::block_timestamp(), "ERR_UNLOCK_TIMESTAMP_UNAVAILABLE");
-
-        // update account data
-        account.lock_balance = 0;
-        self.accounts.insert(&account_id, &UpgradableAccount::from(account));
-    }
-
     pub(crate) fn internal_unstake(&mut self, account_id: AccountId, amount: Balance) {
         let upgradable_account: UpgradableAccount = self.accounts.get(&account_id).unwrap();
 
         let mut account = Account::from(upgradable_account);
 
-        assert!(amount <= account.stake_balance - account.lock_balance, "ERR_AMOUNT_MUST_LESS_THAN_BALANCE");
+        assert!(amount <= account.stake_balance, "ERR_AMOUNT_MUST_LESS_THAN_BALANCE");
 
         // if exist account, update balance and update pre data
         let new_reward: Balance = self.internal_calculate_account_reward(&account);
@@ -111,8 +73,6 @@ impl StakingContract {
         assert!(account.unstake_available_epoch_height <= env::epoch_height(), "ERR_DISABLE_WITHDRAW");
 
         let new_account: Account = Account {
-            lock_balance: account.lock_balance,
-            unlock_timestamp: account.unlock_timestamp,
             pre_reward: account.pre_reward,
             stake_balance: account.stake_balance,
             pre_stake_balance: account.pre_stake_balance,
