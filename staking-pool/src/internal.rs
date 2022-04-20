@@ -125,7 +125,8 @@ impl StakingContract {
             last_block_balance_change: account.last_block_balance_change,
             unstake_balance: 0,
             unstake_start_timestamp: 0,
-            unstake_available_epoch_height: 0
+            unstake_available_epoch_height: 0,
+            point: 0
         };
 
         self.accounts.insert(&account_id, &UpgradableAccount::from(new_account));
@@ -165,7 +166,8 @@ impl StakingContract {
             last_block_balance_change: env::block_index(),
             unstake_balance: 0,
             unstake_available_epoch_height: 0,
-            unstake_start_timestamp: 0
+            unstake_start_timestamp: 0,
+            point: 0,
         };
 
         let upgrade_account = UpgradableAccount::from(new_account);
