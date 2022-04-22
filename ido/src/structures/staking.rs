@@ -3,6 +3,7 @@ This file is temporary
 It should be on staking module instead
  */
 use crate::*;
+use crate::structures::tier::StakingTier;
 
 #[derive(BorshSerialize, BorshDeserialize,)]
 pub struct UserStakingInfo {
@@ -13,61 +14,13 @@ pub struct UserStakingInfo {
     pub lock_day_count: u32,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub enum StakingTier {
-    Tier0,
-    Tier1,
-    Tier2,
-    Tier3,
-    Tier4,
-}
 
-impl Default for StakingTier {
-    fn default() -> Self { StakingTier::Tier0 }
-}
-
-#[derive(BorshSerialize, BorshDeserialize)]
-pub struct TierInfo {
-    pub locked_amount: u64,
-    pub no_of_tickets: UnorderedMap<u16, u16>,
-    pub no_of_allocations: UnorderedMap<u16, u8>,
-}
-
-impl TierInfo {
-    pub(crate) fn new(tier: StakingTier, locked_amount: u64) -> Self {
-        env::log(format!("Creating tier... -> Tier: {:?}", tier).as_bytes());
-
-        Self {
-            locked_amount,
-            no_of_tickets: UnorderedMap::new(get_storage_key(StorageKey::TierTicketInnerKey(format!("{:?}", tier)))),
-            no_of_allocations: UnorderedMap::new(get_storage_key(StorageKey::TierAllocationInnerKey(format!("{:?}", tier)))),
-        }
-    }
-
-    pub(crate) fn get_no_of_tickets(&self, locked_days: u16) -> u16 {
-        self.no_of_tickets
-            .iter()
-            .filter(|(days, _)| days <= &locked_days)
-            .map(|(_, tickets)| tickets)
-            .max()
-            .unwrap_or(0)
-    }
-
-    pub(crate) fn get_no_of_allocations(&self, locked_days: u16) -> u8 {
-        self.no_of_allocations
-            .iter()
-            .filter(|(days, _)| days <= &locked_days)
-            .map(|(_, tickets)| tickets)
-            .max()
-            .unwrap_or(0)
-    }
-}
 
 pub(crate) fn initialize_tiers(token_decimal: u8) -> UnorderedMap<StakingTier, TierInfo> {
     env::log(format!("Initializing tiers...").as_bytes());
 
     let mut tiers = UnorderedMap::new(get_storage_key(StorageKey::TierKey));
-    
+
     let mut tier1 = TierInfo::new(StakingTier::Tier1, 200 * token_decimal as u64);
     let mut tier2 = TierInfo::new(StakingTier::Tier2, 1000 * token_decimal as u64);
     let mut tier3 = TierInfo::new(StakingTier::Tier3, 5000 * token_decimal as u64);
@@ -108,7 +61,7 @@ pub(crate) fn initialize_tiers(token_decimal: u8) -> UnorderedMap<StakingTier, T
     tier4.no_of_allocations.insert(&7, &1);
     tier4.no_of_allocations.insert(&30, &2);
     tier4.no_of_allocations.insert(&180, &3);
-    
+
     env::log(format!("Initializing tiers... -> Tiers created").as_bytes());
 
     tiers.insert(&StakingTier::Tier1, &tier1);
@@ -121,32 +74,6 @@ pub(crate) fn initialize_tiers(token_decimal: u8) -> UnorderedMap<StakingTier, T
     tiers
 }
 
-#[derive(Serialize, Deserialize)]
-/// Stores the information of an account
-/// The tier is from Tier1 to Tier4, if the locked amount is less than Tier1, it would be Tier0
-/// The no_of_staking_tickets is the number of staking tickets of current tier with a number of locked days.
-/// The no_of_allocations is user for Tier4 only. This is the number of allocation that users can have a ido buy slot.
-pub struct TierInfoJson {
-    pub tier: StakingTier,
-    pub locked_amount: U64,
-    pub locked_days: u32,
-    pub calculating_time: Timestamp,
-    pub no_of_staking_tickets: TicketAmount,
-    pub no_of_allocations: TicketAmount,
-}
-
-impl Default for TierInfoJson {
-    fn default() -> Self {
-        Self {
-            tier: StakingTier::default(),
-            locked_amount: U64::from(0),
-            locked_days: 0,
-            calculating_time: 0,
-            no_of_staking_tickets: 0,
-            no_of_allocations: 0,
-        }
-    }
-}
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct ProjectWhitelistInfo {
@@ -161,12 +88,12 @@ pub struct ProjectWhitelistInfo {
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct ProjectDistributionInfo {
-    
+
 }
 
 /// Preparation                 -> AccountId, ProjectId, ProjectStatus
 /// Whitelist (+ Registered)    -> [Fields in Preparation] + Staking Tier, tickets (staking, social, referral), allocations
-/// Sales                       -> [Fields in Whitelist] + 
+/// Sales                       -> [Fields in Whitelist] +
 /// Distribution                -> Ticket + Fund + Token
 /// Other statuses              -> Panic
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -194,9 +121,9 @@ impl ProjectAccountInfoJson {
 impl IDOContract {
     pub(crate) fn internal_get_staking_tier_info(&self, locked_amount: u64, locked_timestamp: Timestamp, calculating_timestamp: Option<Timestamp>) -> TierInfoJson {
         println!("internal_get_staking_tier_info");
-        
+
         let calculating_timestamp = calculating_timestamp.unwrap_or(env::block_timestamp());
-        
+
         // Step 1: Use locked_amount to identify staking tier
         // IDOContract.tiers is stored TierConfiguration
         // Refer the initializing function initialize_tiers
@@ -256,22 +183,22 @@ impl IDOContract {
         // Validating
         // Project must be existed
         let project = &self.get_project_or_panic(project_id);
-        
+
         let mut result = ProjectAccountInfoJson::new(account_id.clone(), project_id, project.status.clone());
 
         // Project's status is in Whitelist, Sale, Distribution
-        
+
         match project.status{
 
             // Status: Preparation -> Return nothing
             ProjectStatus::Preparation =>{
-                result.whitelist_info = None; 
+                result.whitelist_info = None;
                 result.sale_info = None;
             },
 
             // Status: Whitelist -> User must be registered whitelist
-            ProjectStatus:: Whitelist =>{    
-                let whitelist_info = self.get_white_list_info(project_id, &account_id); 
+            ProjectStatus:: Whitelist =>{
+                let whitelist_info = self.get_white_list_info(project_id, &account_id);
                 result.whitelist_info = Some(whitelist_info);
                 result.sale_info = None;
             },
@@ -284,13 +211,13 @@ impl IDOContract {
             //     token_locked_amount: U128,
             //     token_withdrawal_amount: U128,
             ProjectStatus:: Sales| ProjectStatus::Distribution  =>
-            {    
+            {
                     // Get from self.project_account_token_sales. Project -> Account -> AccountTokenSales
                     // Token Sales: funding_amount, token_unlocked_amount, allocations, token_locked_amount, token_withdrawal_amount
                     let sale_info = self.unwrap_project_account_token_sales(project_id, &account_id).unwrap_or(AccountTokenSales::default());
-                    let whitelist_info = self.get_white_list_info(project_id, &account_id); 
+                    let whitelist_info = self.get_white_list_info(project_id, &account_id);
 
-                    result.whitelist_info = Some(whitelist_info); 
+                    result.whitelist_info = Some(whitelist_info);
                     result.sale_info = Some(
                         JsonAccountTokenSales{
                             funding_amount: U128(sale_info.funding_amount),

@@ -21,6 +21,7 @@ use crate::structures::staking::*;
 use crate::utils::*;
 use crate::staking_contract::*;
 use crate::ft_contract::*;
+use crate::structures::tier::{StakingTier, TierInfo, TierInfoJson};
 
 mod structures;
 mod utils;
@@ -46,7 +47,7 @@ pub enum StorageKey {
     ProjectTicketKey,
     ProjectTicketInnerKey(ProjectId),
     AccountProjectKey,
-    AccountProjectKeyInnerKey { 
+    AccountProjectKeyInnerKey {
         account_id_hash: CryptoHash
     },
     TierKey,
@@ -77,7 +78,7 @@ pub struct IDOContract{
     /// Ex: Project 1: Tickets [{Id: L1, Account Id: account1.testnet }, {Id: S2, Account Id: account2.testnet }, ...]
     /// The user tickets were stored here during re-calculate
     pub project_tickets: LookupMap<ProjectId, ProjectTicketType>,
-    
+
     /// The list of projects that that account has registered whitelist.
     pub account_projects: LookupMap<AccountId, AccountProjectType>,
 
@@ -120,14 +121,14 @@ impl IDOContract{
 
         self.owner_id = owner_id;
     }
-    
+
     /// Register an account for a project's whitelist
     /// User can only register the whitelist on the whitelist period of the project
     /// Account id is env::signer_account_id()
     pub fn register_whitelist(&mut self, project_id: ProjectId) {
-        let project_info = self.get_project_info(&project_id);                         
+        let project_info = self.get_project_info(&project_id);
         assert_eq!(project_info.status, ProjectStatus::Whitelist,"Project isn't on whitelist");
-        
+
         assert!(project_info.is_in_whitelist_period(), "Project isn't on whitelist time");
 
         let account_id = env::signer_account_id();
@@ -156,7 +157,7 @@ impl IDOContract{
                 return true;
             }
         }
-        
+
         false
     }
 
@@ -165,7 +166,7 @@ impl IDOContract{
 
         self.assert_project_exist(project_id);
 
-        
+
         let projects_in_account = self.account_projects.get(&account_id);
 
         if let Some(projects_in_account) = projects_in_account {
@@ -173,7 +174,7 @@ impl IDOContract{
                 return true;
             }
         }
-        
+
         false
     }
 
@@ -182,13 +183,13 @@ impl IDOContract{
     /// This function support NEAR deposit only
     #[payable]
     pub fn buy_token(&mut self, project_id: ProjectId)-> Balance {
-        
+
         let mut project_info = self.get_project_or_panic(project_id);
         assert_project_sale_period(&project_info);
- 
+
         let account_id = env::signer_account_id();
-        let mut project_account_token_sales = self.get_project_account_token_sale_or_panic(project_id);      
-        
+        let mut project_account_token_sales = self.get_project_account_token_sale_or_panic(project_id);
+
         // Transfer deposit Near to contract owner
         let account_tickets = self.unwrap_project_account_ticket(project_id, &account_id).unwrap_or(AccountTickets::default());
         let tickets_win = account_tickets.staking_tickets.win_ticket_ids.len();
@@ -197,7 +198,7 @@ impl IDOContract{
         let must_attach_deposit = project_info.get_sales_amount(tickets_win as u32);
         let deposit_amount = env::attached_deposit();
         assert_eq!(deposit_amount, must_attach_deposit, "Must deposit {} NEAR", must_attach_deposit);
-        
+
         // TODO: Increase total fund of NEAR that user deposited for this project to buy token
         project_info.total_fund_received += must_attach_deposit;
 
@@ -208,7 +209,7 @@ impl IDOContract{
             token_withdrawal_amount: 0,
         });
         self.project_account_token_sales.insert(&project_id,&project_account_token_sales);
-        
+
         self.projects.insert(&project_id, &project_info);
 
         // Return deposited_near
@@ -261,7 +262,7 @@ impl IDOContract{
         }else{
             None
         }
-        
+
     }
 
     /// Usecase 1: Display on the right section of staking page - https://web-app-1vi.pages.dev/#/staking
@@ -270,12 +271,12 @@ impl IDOContract{
     pub fn get_staking_tier_info(&self, locked_amount: U64, locked_timestamp: Timestamp, calculating_timestamp: Option<Timestamp>) -> TierInfoJson {
         self.internal_get_staking_tier_info(locked_amount.into(), locked_timestamp, calculating_timestamp)
     }
-     
+
     /// Usecase 2: Display on project details
     ///  * Input: ProjectId, AccountId
     ///  * Output: ProjectAccountInfoJson: Project, Status, Account, WhitelistInfo, SaleInfo, DistributionInfo
     pub fn get_project_account_info(&self, project_id: ProjectId, account_id: AccountId) -> ProjectAccountInfoJson {
-        
+
         self.internal_get_project_staking_tier_info(project_id, account_id)
     }
 
@@ -290,7 +291,7 @@ impl IDOContract{
             // Start processing
             return self.internal_update_staking_tickets(project_id, account_id);
         }
-        
+
         panic_project_not_exist();
         PromiseOrValue::Value(false)
     }
@@ -302,9 +303,9 @@ impl IDOContract{
         let current_time = get_current_time();
 
         println!("close_project_whitelist - get_current_time");
-        // Validate & update status to Sale -> 
+        // Validate & update status to Sale ->
         assert!(project.status == ProjectStatus::Whitelist && project.whitelist_end_date <= current_time, "{}", format!("The project's status ({:?}) is not correct or the whitelist period (End: {} - Current: {}) is not end.", project.status, project.whitelist_end_date, current_time));
-        
+
         // Random list of tickets
         let tickets = self.get_project_ticket_or_panic(project_id);
         let mut account_tickets = self.get_project_account_ticket_or_panic(project_id);
@@ -317,7 +318,7 @@ impl IDOContract{
             let ticket_id = build_ticket_id(TicketType::Staking, ticket_number);
 
             println!("close_project_whitelist - ticket_id: {}", ticket_id);
-            
+
             // let account_id = tickets.get(&ticket_id);
 
             // println!("close_project_whitelist - tried to get account_id");
