@@ -1,3 +1,9 @@
+mod structures;
+mod util;
+mod internal;
+mod core_impl;
+mod enumeration;
+
 use near_sdk::collections::LookupMap;
 use near_sdk::{near_bindgen, AccountId, env, PanicOnDefault, Balance, EpochHeight, BlockHeight, BorshStorageKey, Promise, PromiseResult, PromiseOrValue, ext_contract};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
@@ -5,13 +11,10 @@ use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::json_types::{U128};
 
 use crate::account::*;
+use crate::structures::account::{Account, UpgradableAccount};
+use crate::structures::tier::{XTokenConfigs, TierId};
 use crate::util::*;
 
-mod account;
-mod util;
-mod internal;
-mod core_impl;
-mod enumeration;
 
 pub const NO_DEPOSIT: Balance = 0;
 pub const DEPOSIT_ONE_YOCTOR: Balance = 1;
@@ -23,19 +26,38 @@ pub struct Config {
     // Percent reward per 1 block
     pub reward_numerator: u32,
     pub reward_denumerator: u64,
-    pub total_apr: u32
+    pub total_apr: u32,
+
+    /// the config for each user Tier
+    pub tier_x_token: XTokenConfigs,
+}
+
+impl Config {
+    pub fn get_default_tier_x_token_cfg() -> XTokenConfigs {
+        let mut tier_x_token = XTokenConfigs::new(StorageKey::XTokenKey);
+        tier_x_token.insert(&1u8, &100_u32);
+        tier_x_token.insert(&2u8, &1_000_u32);
+        tier_x_token.insert(&3u8, &5_000_u32);
+        tier_x_token.insert(&4u8, &10_000_u32);
+
+        return tier_x_token;
+    }
 }
 
 impl Default for Config {
     fn default() -> Self {
         // By default APR 15%
-        Self { reward_numerator: 715, reward_denumerator: 100000000000, total_apr: 15 }
+        Self {
+            reward_numerator: 715, reward_denumerator: 100000000000, total_apr: 15,
+            tier_x_token: Config::get_default_tier_x_token_cfg(),
+        }
     }
 }
 
 #[derive(BorshDeserialize, BorshSerialize, BorshStorageKey)]
 pub enum StorageKey {
-    AccountKey
+    AccountKey,
+    XTokenKey,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
