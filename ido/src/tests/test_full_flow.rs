@@ -70,14 +70,14 @@ fn test_happy_case() {
     println!("User A registers whitelist - {}", account_a());
     assert!(emulator.contract.is_whitelist(project_id));
 
-    let projects_in_account = emulator.contract.account_projects.get(&account_a()).unwrap();
-    let accounts_and_tickets_in_project = emulator.contract.project_account_tickets.get(&project_id).unwrap();
+    let projects_in_account = emulator.contract.projects_by_account.get(&account_a()).unwrap();
+    let accounts_and_tickets_in_project = emulator.contract.accounts_by_project.get(&project_id).unwrap();
 
     assert!(projects_in_account.contains(&project_id));
     assert_eq!(1, accounts_and_tickets_in_project.len() as u32);
 
-    let project_info = emulator.contract.get_project(project_id).unwrap();
-    assert_eq!(1, project_info.whitelist_accounts);
+    let project = emulator.contract.get_project(project_id).unwrap();
+    assert_eq!(1, project.whitelist_accounts);
 
     // User B registers whitelist
 
@@ -107,7 +107,7 @@ fn test_happy_case() {
     assert_eq!(expected_staking_tickets as u64, project.total_staking_tickets);
     assert_eq!(expected_allocations, project.total_allocations);
     
-    let account_tickets = emulator.contract.project_account_tickets.get(&project_id).unwrap();
+    let account_tickets = emulator.contract.accounts_by_project.get(&project_id).unwrap();
     let tickets = account_tickets.get(&account_a()).unwrap();
 
     println!("Staking tier -> Account Staking Tickets");
@@ -126,14 +126,14 @@ fn test_happy_case() {
     let ticket_id = build_ticket_id(TicketType::Staking, ticket_number);
 
     println!("Staking tier -> Project Ticket");
-    let project_tickets = emulator.contract.project_tickets.get(&project_id);
+    let tickets_by_project = emulator.contract.tickets_by_project.get(&project_id);
     println!("Staking tier -> Project Ticket - Achieved object");
-    if let Some(project_tickets) = project_tickets {
-        let keys = project_tickets.keys_as_vector();
-        let values = project_tickets.values_as_vector();
-        println!("Staking tier -> Project Ticket - Ticket Owner - Len: {} - [({},{})]", &project_tickets.len(), 0, 0);
+    if let Some(tickets_by_project) = tickets_by_project {
+        let keys = tickets_by_project.keys_as_vector();
+        let values = tickets_by_project.values_as_vector();
+        println!("Staking tier -> Project Ticket - Ticket Owner - Len: {} - [({},{})]", &tickets_by_project.len(), 0, 0);
         
-        // let ticket_owner = project_tickets.get(&ticket_id);
+        // let ticket_owner = tickets_by_project.get(&ticket_id);
         // if let Some(ticket_owner) = ticket_owner {
         //     println!("Staking tier -> Project Ticket - Assert");
         //     assert_eq!(account_a, ticket_owner);
@@ -196,11 +196,11 @@ fn test_happy_case() {
     assert_eq!(expected_deposit_amount, actual_deposit_amount);
 
     emulator.set_account_id_and_desposit(account_a(), account_a(), expected_deposit_amount);
-    emulator.contract.buy_token(project_id);
+    emulator.contract.commit(project_id);
 
     // Assert Project
     let project = emulator.contract.projects.get(&project_id).unwrap();
-    assert_eq!(expected_deposit_amount, project.total_fund_received);
+    assert_eq!(expected_deposit_amount, project.total_fund_committed);
     
     // Assert Project Account Token Sales
     let actual_account_token_sales = emulator.contract.unwrap_project_account_token_sales(project_id, &account_a()).unwrap();
@@ -220,17 +220,17 @@ fn test_project_ticket() {
 
     println!("Start testing...");
 
-    let mut project_ticket = emulator.contract.project_tickets.get(&project_id).unwrap();
+    let mut project_ticket = emulator.contract.tickets_by_project.get(&project_id).unwrap();
     assert_eq!(0, project_ticket.len() as u32);
 
     project_ticket.insert(&"L1".to_string(), &"Account_1".to_string());
     assert_eq!(1, project_ticket.len() as u32);
 
     // Update
-    emulator.contract.project_tickets.insert(&project_id, &project_ticket);
+    emulator.contract.tickets_by_project.insert(&project_id, &project_ticket);
 
     // Reload
-    let project_ticket = emulator.contract.project_tickets.get(&project_id).unwrap();
+    let project_ticket = emulator.contract.tickets_by_project.get(&project_id).unwrap();
     let keys = project_ticket.keys_as_vector().to_vec();
     let values = project_ticket.values_as_vector().to_vec();
 
