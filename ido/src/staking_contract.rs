@@ -77,62 +77,13 @@ impl IDOContract {
         // Verify staking_info.account_id vs account_id 
         assert_eq!(account_id.clone(), staking_account_info.account_id, "The staking account is not equal to current account id.");
 
-        let mut project = self.get_project_or_panic(project_id);
+        let mut project = self.internal_get_project_or_panic(project_id);
 
         // Project's status must be whitelist & current time is between whitelist_start_date and whitelist_end_date
-        assert_project_whitelist_period(&project);
-            
-        // Calculate staking tickets & allocation -> Tier, StakingTicket, Allocations
-        // staking_info.lock_balance: The staked amount of token that has been locked by the user.
-        // staking_info.unlock_timestamp: The time that user can unlock their locked balance. It is nanosecond unix time.
-        let locked_amount: u128 = staking_account_info.lock_balance.into();
-        let tier_info = self.internal_get_staking_tier_info(locked_amount as u64, staking_account_info.unlock_timestamp, Some(project.whitelist_start_date.clone()));
-
-        // Get AccountTickets of this project
-        let mut accounts_of_current_project = self.project_account_tickets.get(&project_id).unwrap();
+        project.assert_whitelist_period();
         
-        // Tickets' information from AccountTickets
-        let mut account_tickets = accounts_of_current_project.get(&account_id).unwrap_or_else(|| AccountTickets::default());
-        let new_allocations = tier_info.no_of_allocations - account_tickets.allocations;
-        account_tickets.staking_tickets.eligible_tickets = tier_info.no_of_staking_tickets;
-        account_tickets.staking_tickets.deposit_tickets = tier_info.no_of_staking_tickets;
-        account_tickets.allocations = tier_info.no_of_allocations;
-        account_tickets.deposit_allocations = tier_info.no_of_allocations;
-        account_tickets.staking_tier = tier_info.tier;
-
-        if new_allocations > 0 {
-            project.total_allocations += new_allocations;
-        }
-
-        // Generate tickets
-        let current_no_of_tickets = account_tickets.staking_tickets.ticket_ids.len();
-        let new_no_of_tickets = account_tickets.staking_tickets.eligible_tickets - current_no_of_tickets as u32;
-
-        if new_no_of_tickets > 0 {
-            // Get project_tickets to insert ticket
-            let mut tickets_in_current_project = self.get_project_ticket_or_panic(project_id);
-            
-            for _ in 0..new_no_of_tickets {
-                project.total_staking_tickets += 1;
-                let ticket_number = project.total_staking_tickets as u64;
-                let ticket_id = build_ticket_id(TicketType::Staking, ticket_number);
-
-                tickets_in_current_project.insert(&ticket_id, &account_id);
-
-                account_tickets.staking_tickets.ticket_ids.push(ticket_number);
-                account_tickets.staking_tickets.win_ticket_ids.push(ticket_number);
-            }
-
-            // Update tickets_in_current_project
-            self.project_tickets.insert(&project_id, &tickets_in_current_project);
-        }
-
-        // Update Account Tickets
-        accounts_of_current_project.insert(&account_id, &account_tickets);
-
-        // Update Project Account Tickets
-        self.project_account_tickets.insert(&project_id, &accounts_of_current_project);
-
+        // TODO: Generate tickets
+        
         // Update project
         self.projects.insert(&project_id, &project);
 

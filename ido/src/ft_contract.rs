@@ -23,7 +23,7 @@ impl IDOContract {
     #[payable]
     pub fn claim(&mut self, project_id: ProjectId) -> Promise {
         let account_id: AccountId = env::predecessor_account_id();
-        let project = self.get_project_or_panic(project_id);
+        let project = self.internal_get_project_or_panic(project_id);
         assert!(project.is_in_distribution_period(), "The project isn't in distribution period.");
 
         assert_one_yocto();
@@ -34,7 +34,7 @@ impl IDOContract {
         ext_ft_contract::ft_transfer(
             account_id.clone(), 
             U128(claim_amount), 
-            Some(format!("Claim {} {} from IDO Contract", claim_amount, project.token_symbol)), 
+            Some(format!("Claim the amount of {} on contract {} from IDO Contract", claim_amount, project.token_contract_id)), 
             &project.token_contract_id, 
             DEPOSIT_ONE_YOCTOR, 
             FT_TRANSFER_GAS

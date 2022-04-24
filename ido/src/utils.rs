@@ -1,5 +1,7 @@
 use crate::*;
 
+pub(crate) const ERROR_1: &str = "";
+
 pub(crate) const ONE_NEAR: u128 = 1_000_000_000_000_000_000_000_000;
 
 pub(crate) fn get_storage_key(key: StorageKey) -> Vec<u8> {
@@ -44,75 +46,32 @@ pub(crate) fn panic_project_not_exist() {
     panic!("Project does not exist.");
 }
 
-pub(crate) fn assert_project_whitelist_period(project: &ProjectInfo) {
-    assert!(project.is_in_whitelist_period(), "Project isn't in whitelist period.");
-}
-
-pub(crate) fn assert_project_sale_period(project: &ProjectInfo) {
-    assert!(project.is_in_sale_period(), "Project isn't in sale period.");
-}
 
 impl IDOContract{
-    pub(crate) fn assert_project_exist(&self, project_id: ProjectId) {
-        assert!(self.internal_has_project(project_id), "Project does not exist.");
+    // Assert functions
+    pub(crate) fn assert_test_mode(&self) {
+        assert_eq!(self.test_mode_enabled, true, "Test mode required to execute this function.");
     }
 
-    
-
-    pub fn get_project_info(&self, project_id: &ProjectId)-> ProjectInfo{
-
-        let project_info = self.projects.get(&project_id)
-                                                .expect("No project found");
-        project_info
+    pub(crate) fn assert_owner(&self) {
+        assert_eq!(self.owner_id, env::signer_account_id(), "You are not the owner of this contract.");
     }
 
-    pub fn unwrap_account_project(&self,account_id: &AccountId)
-            -> UnorderedSet<ProjectId> {
-        let account_projects = self.account_projects
-                                    .get(&account_id)
-                                    .unwrap_or_else(|| {
-                                        UnorderedSet::new(
-                                            get_storage_key(StorageKey::AccountProjectKeyInnerKey{
-                                                account_id_hash: hash_account_id(&account_id)
-                                            })
-                                        )
-                                    });
-        account_projects
+    pub(crate) fn assert_test_mode_and_owner(&self) {
+        self.assert_test_mode();
+        self.assert_owner();
     }
 
-    /// Return an AccountTokenSales object if project_id & account_id existed. 
-    /// If project_id doesn't exist -> panic. 
-    /// If accoung_id doesn't exist -> None.
-    pub fn unwrap_project_account_token_sales(&self, project_id: ProjectId, account_id: &AccountId) -> Option<AccountTokenSales> {
-        let project_account_token_sales = self.get_project_account_token_sale_or_panic(project_id);
-        project_account_token_sales.get(account_id)
-    }
-
-    /// Return an AccountTickets object if project_id & account_id existed. 
-    /// If project_id doesn't exist -> panic. 
-    /// If accoung_id doesn't exist -> None.
-    pub fn unwrap_project_account_ticket(&self, project_id: ProjectId, account_id: &AccountId) -> Option<AccountTickets>{
-        let project_account_tickets = self.get_project_account_ticket_or_panic(project_id);
-        project_account_tickets.get(account_id)
-    }
-}
-
-#[near_bindgen]
-impl IDOContract{
-    // Function use for testing_buytoken
-    //#[private]
-    pub fn create_default_account_token_sales(&mut self, project_id: ProjectId, account_id: &AccountId){
-        let default_account_token_sales = AccountTokenSales{
-            funding_amount: 0,
-            token_unlocked_amount:0,
-            token_locked_amount:0,
-            token_withdrawal_amount:0,
-        };
-
-        self.assert_project_exist(project_id);
-
-        let mut account_token_sales = self.project_account_token_sales.get(&project_id).unwrap();
-        account_token_sales.insert(&account_id, &default_account_token_sales);
-        self.project_account_token_sales.insert(&project_id, &account_token_sales);
+    pub fn internal_get_projects_by_account_or_default(&self,account_id: &AccountId)
+        -> UnorderedSet<ProjectId> {
+            self.projects_by_account
+                .get(&account_id)
+                .unwrap_or_else(|| {
+                    UnorderedSet::new(
+                        get_storage_key(StorageKey::ProjectsByAccountInnerKey{
+                            account_id_hash: hash_account_id(&account_id)
+                        })
+                    )
+                })
     }
 }
