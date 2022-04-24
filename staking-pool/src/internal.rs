@@ -94,7 +94,7 @@ impl StakingContract {
         account.unstake_available_epoch_height = env::epoch_height() + NUM_EPOCHS_TO_UNLOCK;
         account.unstake_balance += amount;
         account.unstake_start_timestamp = env::block_timestamp();
-        
+
         if account.stake_balance == 0 {
             self.total_staker -= 1;
         }

@@ -51,10 +51,10 @@ impl StakingContract {
     }
 
     pub fn get_pool_info(&self) -> PoolInfo {
-        PoolInfo { 
-            total_stake_balance: U128(self.total_stake_balance), 
-            total_reward: U128(self.pre_reward + self.internal_calculate_global_reward()), 
-            total_stakers: U128(self.total_staker), 
+        PoolInfo {
+            total_stake_balance: U128(self.total_stake_balance),
+            total_reward: U128(self.pre_reward + self.internal_calculate_global_reward()),
+            total_stakers: U128(self.total_staker),
             is_paused: self.paused
         }
     }

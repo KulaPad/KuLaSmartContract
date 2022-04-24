@@ -10,11 +10,10 @@ use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::json_types::{U128};
 
-use crate::account::*;
-use crate::modules::account::{Account, UpgradableAccount};
-use crate::modules::tier::{XTokenConfigs, TierId};
+use crate::modules::account::{Account, AccountJson, UpgradableAccount};
+use crate::modules::tier::{TierMinPointConfigs, Tier};
 pub use crate::enumeration::PoolInfo;
-pub use crate::account::AccountJson;
+use crate::Tier::Tier0;
 use crate::util::*;
 
 
@@ -27,22 +26,24 @@ pub const NUM_EPOCHS_TO_UNLOCK: EpochHeight = 1;
 pub struct Config {
     // Percent reward per 1 block
     pub reward_numerator: u32,
+    /// What is?
     pub reward_denumerator: u64,
     pub total_apr: u32,
 
     /// the config for each user Tier
-    pub tier_x_token: XTokenConfigs,
+    pub tier_point_config: TierMinPointConfigs,
 }
 
 impl Config {
-    pub fn get_default_tier_x_token_cfg() -> XTokenConfigs {
-        let mut tier_x_token = XTokenConfigs::new(StorageKey::XTokenKey);
-        tier_x_token.insert(&1u8, &100_u32);
-        tier_x_token.insert(&2u8, &1_000_u32);
-        tier_x_token.insert(&3u8, &5_000_u32);
-        tier_x_token.insert(&4u8, &10_000_u32);
+    pub fn get_default_tier_min_point_cfg() -> TierMinPointConfigs {
+        let mut cfg = TierMinPointConfigs::new(StorageKey::XTokenKey);
+        cfg.insert(&Tier::Tier0, &0);
+        cfg.insert(&Tier::Tier1, &100);
+        cfg.insert(&Tier::Tier2, &1_000);
+        cfg.insert(&Tier::Tier3, &5_000);
+        cfg.insert(&Tier::Tier4, &10_000);
 
-        return tier_x_token;
+        return cfg;
     }
 }
 
@@ -51,7 +52,7 @@ impl Default for Config {
         // By default APR 15%
         Self {
             reward_numerator: 715, reward_denumerator: 100000000000, total_apr: 15,
-            tier_x_token: Config::get_default_tier_x_token_cfg(),
+            tier_point_config: Config::get_default_tier_min_point_cfg(),
         }
     }
 }
@@ -70,7 +71,7 @@ pub struct StakingContract {
     pub config: Config, // Config reward and apr for contract
     pub total_stake_balance: Balance, // Total token balance lock in contract
     pub total_paid_reward_balance: Balance,
-    pub total_staker: Balance,
+    pub total_staker: Balance, // TODO: integer
     pub pre_reward: Balance, // Pre reward before change total balance
     pub last_block_balance_change: BlockHeight,
     pub accounts: LookupMap<AccountId, UpgradableAccount>, // List staking user
@@ -149,6 +150,30 @@ impl StakingContract {
         let contract: StakingContract = env::state_read().expect("ERR_READ_CONTRACT_STATE");
         contract
     }
+
+    /// Get user point(xKula) amount by account id
+    pub fn get_user_point(&self, account_id: AccountId) -> U128 {
+        let account: Option<UpgradableAccount> = self.accounts.get(&account_id);
+        if account.is_some() {
+            let acc: Account = Account::from(account.unwrap());
+            U128(acc.point)
+        } else {
+            U128(0)
+        }
+    }
+
+    /// Get user staking tier by account id
+    pub fn get_user_staking_tier(&self, account_id: AccountId) -> Tier {
+        let point = self.get_user_point(account_id);
+        let mut user_tier = Tier::Tier0;
+        for (tier, min_point) in self.config.tier_point_config.to_vec() {
+            if point >= min_point {
+                user_tier = tier
+            }
+        }
+
+        user_tier
+    }
 }
 
 
@@ -191,7 +216,8 @@ mod tests {
         let contract: StakingContract = StakingContract::new(accounts(1).to_string(), "ft_contract".to_string(), Config {
             reward_numerator: 1500,
             reward_denumerator: 10000000,
-            total_apr: 15
+            total_apr: 15,
+            tier_point_config: Config::get_default_tier_min_point_cfg(),
         });
 
         assert_eq!(contract.owner_id, accounts(1).to_string(), "Contract owner should be equal {}", accounts(1).to_string());
@@ -298,6 +324,11 @@ mod tests {
 
     #[test]
     fn withdraw_test() {
+
+    }
+
+    #[test]
+    fn get_user_point_test() {
 
     }
 }
