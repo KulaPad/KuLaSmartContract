@@ -1,4 +1,4 @@
-mod structures;
+mod modules;
 mod util;
 mod internal;
 mod core_impl;
@@ -11,8 +11,8 @@ use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::json_types::{U128};
 
 use crate::account::*;
-use crate::structures::account::{Account, UpgradableAccount};
-use crate::structures::tier::{XTokenConfigs, TierId};
+use crate::modules::account::{Account, UpgradableAccount};
+use crate::modules::tier::{XTokenConfigs, TierId};
 pub use crate::enumeration::PoolInfo;
 pub use crate::account::AccountJson;
 use crate::util::*;
