@@ -3,6 +3,7 @@ use near_sdk::{PanicOnDefault, Timestamp, Balance, AccountId, CryptoHash, Promis
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::collections::{UnorderedMap, UnorderedSet, LookupMap};
+use near_sdk::env::signer_account_id;
 use near_sdk::json_types::{U128, U64};
 
 pub type ProjectId = u64;
@@ -18,6 +19,7 @@ use crate::modules::account::*;
 use crate::utils::*;
 use crate::staking_contract::*;
 use crate::ft_contract::*;
+use crate::modules::tier::{StakingTier, TierConfigs, TierInfo, UserTierInfo};
 use crate::structures::tier::{StakingTier, TierInfo, TierInfoJson};
 
 mod modules;
@@ -48,6 +50,46 @@ pub enum StorageKey {
     TierKey,
     TierTicketInnerKey (String),
     TierAllocationInnerKey (String),
+    TierConfigsKey,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Clone, Copy)]
+#[serde(crate = "near_sdk::serde")]
+pub struct Config {
+    /// the config for each user Tier
+    pub tier_point: TierMinPointConfigs,
+}
+
+impl Config {
+    pub fn get_default_tier_cfg() -> TierMinPointConfigs {
+        let mut cfg = TierConfigs::new(StorageKey::TierConfigsKey);
+        cfg.insert(&StakingTier::Tier0, &TierInfo { ticket: 0, allocation: 0 });
+        cfg.insert(&StakingTier::Tier1, &TierInfo { ticket: 1, allocation: 0 });
+        cfg.insert(&StakingTier::Tier2, &TierInfo { ticket: 12, allocation: 0 });
+        cfg.insert(&StakingTier::Tier3, &TierInfo { ticket: 100, allocation: 0 });
+        cfg.insert(&StakingTier::Tier4, &TierInfo { ticket: 100, allocation: 1 });
+        // cfg.extend(vec![
+        //     (StakingTier::Tier0, 0_u64),
+        //     (StakingTier::Tier1, 100_u64),
+        //     (StakingTier::Tier2, 1000_u64),
+        //     (StakingTier::Tier3, 5000_u64),
+        //     (StakingTier::Tier4, 10000_u64),
+        // ].into_iter());
+
+        return cfg;
+    }
+
+    pub fn set_tier_cfg(&mut self, tier: Tier, tier_info: TierInfo) {
+        self.tier_point.insert(&tier, &tier_info);
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            tier_point: Config::get_default_tier_cfg(),
+        }
+    }
 }
 
 #[near_bindgen]
@@ -81,12 +123,19 @@ pub struct IDOContract{
     //pub tiers: UnorderedMap<StakingTier, TierInfo>,
 
     pub test_mode_enabled: bool,
+
+    pub config: Config,
 }
 
 #[near_bindgen]
-impl IDOContract{
+impl IDOContract {
     #[init]
-    pub fn new(owner_id: AccountId, staking_contract_id: AccountId, funding_ft_token_ids: Option<Vec<AccountId>>, test_mode_enabled: Option<bool>) -> Self {
+    pub fn new_with_default_config(owner_id: AccountId, staking_contract_id: AccountId, funding_ft_token_ids: Option<Vec<AccountId>>, test_mode_enabled: Option<bool>) -> Self {
+        Self::new(owner_id, staking_contract_id, funding_ft_token_ids, test_mode_enabled, Config::default())
+    }
+
+    #[init]
+    pub fn new(owner_id: AccountId, staking_contract_id: AccountId, funding_ft_token_ids: Option<Vec<AccountId>>, test_mode_enabled: Option<bool>, config: Config) -> Self {
         env::log(format!("Creating contract...").as_bytes());
         let mut contract = Self {
             owner_id,
@@ -97,6 +146,7 @@ impl IDOContract{
             tickets_by_project: LookupMap::new(get_storage_key(StorageKey::TicketsByProjectKey)),
             projects_by_account: LookupMap::new(get_storage_key(StorageKey::ProjectsByAccountKey)),
             test_mode_enabled: test_mode_enabled.unwrap_or(true),
+            config,
         };
 
         if let Some(funding_ft_token_ids) = funding_ft_token_ids {
@@ -206,5 +256,11 @@ impl IDOContract{
 
         project.status = ProjectStatus::Sales;
         self.projects.insert(&project_id, &project);
+    }
+
+    /// get UserTierInfo: tier, point, ticket, alloc
+    pub fn get_user_tier_info(&self) -> UserTierInfo {
+        let user: AccountId = env::predecessor_account_id();
+        UserTierInfo::get_user_tier_info(user, self.config.tier_point)
     }
 }
