@@ -15,5 +15,5 @@ impl Default for Tier {
 }
 
 /// Map<Tier, min_point_to_achieve_this_tier>
-pub type TierMinPointConfigs = UnorderedMap<Tier, u32>;
+pub type TierMinPointConfigs = UnorderedMap<Tier, u64>;
 

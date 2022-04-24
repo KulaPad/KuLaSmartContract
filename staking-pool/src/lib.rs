@@ -8,7 +8,7 @@ use near_sdk::collections::LookupMap;
 use near_sdk::{near_bindgen, AccountId, env, PanicOnDefault, Balance, EpochHeight, BlockHeight, BorshStorageKey, Promise, PromiseResult, PromiseOrValue, ext_contract};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::json_types::{U128};
+use near_sdk::json_types::{U128, U64};
 
 use crate::modules::account::{Account, AccountJson, UpgradableAccount};
 use crate::modules::tier::{TierMinPointConfigs, Tier};
@@ -36,7 +36,7 @@ pub struct Config {
 
 impl Config {
     pub fn get_default_tier_min_point_cfg() -> TierMinPointConfigs {
-        let mut cfg = TierMinPointConfigs::new(StorageKey::XTokenKey);
+        let mut cfg = TierMinPointConfigs::new(StorageKey::PointConfigKey);
         cfg.insert(&Tier::Tier0, &0);
         cfg.insert(&Tier::Tier1, &100);
         cfg.insert(&Tier::Tier2, &1_000);
@@ -44,6 +44,10 @@ impl Config {
         cfg.insert(&Tier::Tier4, &10_000);
 
         return cfg;
+    }
+
+    pub fn set_tier_min_point_cfg(&mut self, tier: Tier, min_point: u64) {
+        self.tier_point_config.insert(&tier, &min_point);
     }
 }
 
@@ -60,7 +64,7 @@ impl Default for Config {
 #[derive(BorshDeserialize, BorshSerialize, BorshStorageKey)]
 pub enum StorageKey {
     AccountKey,
-    XTokenKey,
+    PointConfigKey,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -151,28 +155,68 @@ impl StakingContract {
         contract
     }
 
+    /// create or update tier min point config
+    pub fn set_tier_point(&mut self, tier: Tier, min_point: U64) {
+        self.config.set_tier_min_point_cfg(tier, min_point as u64);
+    }
+
     /// Get user point(xKula) amount by account id
-    pub fn get_user_point(&self, account_id: AccountId) -> U128 {
+    pub fn get_user_point(&self, account_id: AccountId) -> U64 {
         let account: Option<UpgradableAccount> = self.accounts.get(&account_id);
         if account.is_some() {
             let acc: Account = Account::from(account.unwrap());
-            U128(acc.point)
+            U128(acc.point) as U64
         } else {
-            U128(0)
+            U64(0)
         }
     }
 
-    /// Get user staking tier by account id
-    pub fn get_user_staking_tier(&self, account_id: AccountId) -> Tier {
+    /// Get user staking tier and point by account id
+    pub fn get_user_staking_tier(&self, account_id: AccountId) -> (Tier, U64) {
         let point = self.get_user_point(account_id);
         let mut user_tier = Tier::Tier0;
         for (tier, min_point) in self.config.tier_point_config.to_vec() {
             if point >= min_point {
                 user_tier = tier
+            } else {
+                break
             }
         }
 
-        user_tier
+        (user_tier, point)
+    }
+
+    /// Get user staking tier trimming down:
+    /// Use for calculating Ticket & Allocation
+    /// Eg: 9.999 point =
+    ///     5.000 + 4.000 + 999
+    ///     1 x T3 = 100
+    ///     4 x T2 = 48
+    ///     9 x T1 = 9
+    ///     100 + 48 + 9 = 157
+    ///
+    /// return Vec<(Tier, min_tier_point, total_valid_point_at_this_tier)>
+    pub fn get_user_staking_matched_tiers(&self, mut point: U64) -> Vec<(Tier, U64, U64)> {
+        let mut tiers: Vec<(Tier, U64, U64)> = vec![];
+        for (tier, min_point) in self.config.tier_point_config.to_vec().iter().rev() {
+            if min_point <= &0 {
+                // tier0
+                let tier_point = point;
+                tiers.push((tier as Tier, *min_point as U64, tier_point as U64));
+
+                point = U64(0);
+            } else {
+                // has this tier
+                if point >= *min_point {
+                    let tier_point = *min_point * (point / *min_point); // NOTE: u64 division so we don't need to floor
+                    tiers.push((tier as Tier, *min_point as U64, tier_point as U64));
+
+                    point -= tier_point;
+                }
+            }
+        }
+
+        tiers
     }
 }
 
@@ -328,7 +372,22 @@ mod tests {
     }
 
     #[test]
+    fn update_tier_point_cfg_test() {
+
+    }
+
+    #[test]
     fn get_user_point_test() {
+
+    }
+
+    #[test]
+    fn get_user_staking_tier_test() {
+
+    }
+
+    #[test]
+    fn get_user_staking_matched_tiers_test() {
 
     }
 }
