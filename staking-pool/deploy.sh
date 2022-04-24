@@ -1,1 +1,0 @@
-near deploy --wasmFile res/staking-contract.wasm --accountId staking-kulapad.testnet

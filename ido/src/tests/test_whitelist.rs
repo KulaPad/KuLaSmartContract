@@ -10,7 +10,7 @@ fn test_register_whitelist() {
     emulator.contract.create_sample_projects();
     emulator.contract.register_whitelist(8);
     emulator.contract.register_whitelist(9);
-    assert_eq!(emulator.contract.account_projects.get(&"bob".to_string()).unwrap().len(),2);
+    assert_eq!(emulator.contract.projects_by_account.get(&"bob".to_string()).unwrap().len(),2);
 }
 
 #[test]
