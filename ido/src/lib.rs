@@ -15,6 +15,7 @@ pub type ProjectIdUnorderedSet = UnorderedSet<ProjectId>;
 
 use crate::modules::project::*;
 use crate::modules::account::*;
+use crate::modules::xtoken::*;
 use crate::utils::*;
 use crate::staking_contract::*;
 use crate::ft_contract::*;
@@ -30,6 +31,7 @@ pub const TOKEN_DECIMAL: u8 = 8;
 
 pub const GAS_FUNCTION_CALL: u64 = 5_000_000_000_000;
 pub const GAS_FUNCTION_CALL_UPDATE_STAKING_TIER: u64 = 50_000_000_000_000;
+pub const GAS_FUNCTION_CALL_GET_USER_POINT: u64 = 50_000_000_000_000;
 pub const NO_DEPOSIT: u128 = 0;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]

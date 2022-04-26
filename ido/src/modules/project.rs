@@ -244,7 +244,10 @@ impl IDOContract {
     }
     
     // Project Whitelist
-
+    // If project has no whitelist type or the whitelist type is ticket, 
+    // user can register whitelist without any requires.
+    // If project's whitelist type is fixed Xtoken, 
+    // need to check user has enough xtoken or not.
     pub(crate) fn internal_register_whitelist(&mut self, project_id: ProjectId) {
         let project = self.internal_get_project_or_panic(project_id);                         
         assert_eq!(project.status, ProjectStatus::Whitelist,"Project isn't on whitelist");
@@ -252,15 +255,32 @@ impl IDOContract {
         assert!(project.is_in_whitelist_period(), "Project isn't on whitelist time");
 
         let account_id = env::signer_account_id();
-        let mut projects_by_account = self.internal_get_projects_by_account_or_default(&account_id);
+
+        match project.whitelist_type {
+            WhitelistType::None =>{
+                
+                self.internal_add_account(&account_id, project_id);
+            },
+            WhitelistType::XToken(xtoken) => {
+                self.internal_register_fixed_xtoken_project(project_id,account_id,xtoken);
+            },
+            WhitelistType::Ticket => {
+                self.internal_add_account(&account_id, project_id);
+            }
+        }
+    }
+
+    pub(crate) fn internal_add_account(&mut self, account_id: &AccountId, project_id: ProjectId){
+
+        let mut projects_by_account = self.internal_get_projects_by_account_or_default(account_id);
 
         assert!(!projects_by_account.contains(&project_id),"Already register whitelist this project");
         projects_by_account.insert(&project_id);
-        self.projects_by_account.insert(&account_id,&projects_by_account);
+        self.projects_by_account.insert(account_id,&projects_by_account);
 
         // Insert into accounts_by_project -> Use unwrap because of making sure that it has been inserted when project created.
         let mut accounts_in_project = self.accounts_by_project.get(&project_id).unwrap();
-        accounts_in_project.insert(&account_id, &ProjectAccount::default());
+        accounts_in_project.insert(account_id, &ProjectAccount::default());
         self.accounts_by_project.insert(&project_id, &accounts_in_project);
     }
 
