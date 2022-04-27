@@ -92,6 +92,27 @@ pub struct Project {
     pub distribution_type: DistributionType,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ProjectInput {
+    pub owner_id: AccountId,
+
+    pub whitelist_start_date: Timestamp,
+    pub whitelist_end_date: Timestamp,
+    pub sale_start_date: Timestamp,
+    pub sale_end_date: Timestamp,
+
+    pub token_contract_id: AccountId,
+    pub token_raised_amount: U128,
+    pub token_sale_rate_numberator: u64,
+    pub token_sale_rate_denominator: u64,
+
+    pub fund_contract_id: AccountId,
+    
+    pub whitelist_type: WhitelistType,
+    pub sale_type: SaleType,
+    pub distribution_type: DistributionType,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct ProjectJson {
@@ -118,7 +139,28 @@ pub struct ProjectJson {
 
 // Project functions
 impl Project {
-    
+    pub fn from(project: ProjectInput) -> Project {
+        Self {
+            owner_id: project.owner_id.clone(),
+            whitelist_start_date: project.whitelist_start_date,
+            whitelist_end_date: project.whitelist_end_date,
+            sale_start_date: project.sale_start_date,
+            sale_end_date: project.sale_end_date,
+            token_contract_id: project.token_contract_id.clone(),
+            token_raised_amount: project.token_raised_amount.0,
+            token_sale_rate: Rate {
+                numberator: project.token_sale_rate_numberator,
+                denominator: project.token_sale_rate_denominator,
+            },
+            fund_contract_id: project.fund_contract_id.clone(),
+            total_fund_committed: 0,
+            status: ProjectStatus::Preparation,
+            whitelist_type: project.whitelist_type,
+            sale_type: project.sale_type,
+            distribution_type: project.distribution_type,
+        }
+    }
+
     pub(crate) fn assert_whitelist_period(&self) {
         assert!(self.is_in_whitelist_period(), "Project isn't in whitelist period.");
     }
@@ -154,13 +196,42 @@ impl IDOContract {
         assert!(self.internal_has_project(project_id), "Project does not exist.");
     }
 
-    pub(crate) fn internal_get_project_or_panic(&self, project_id: ProjectId) -> Project {
+    // Projects
+
+    pub(crate) fn internal_get_project_or_panic(&self, project_id: &ProjectId) -> Project {
         self.projects.get(&project_id).expect("Project does not exist.")
     }
 
-    pub(crate) fn internal_get_accounts_by_project_or_panic(&self, project_id: ProjectId) -> ProjectAccountUnorderedMap {
+    // Accounts by Project
+
+    pub(crate) fn internal_get_accounts_by_project_or_panic(&self, project_id: &ProjectId) -> ProjectAccountUnorderedMap {
         self.accounts_by_project.get(&project_id).expect("Project account tickets do not exist.")
     }
+
+    pub(crate) fn internal_get_account_by_project_or_panic(&self, project_id: &ProjectId, account_id: &AccountId) -> ProjectAccount {
+        self.internal_get_accounts_by_project_or_panic(&project_id).get(&account_id).expect("The account doesn't belong to the project.")
+    }
+
+    pub(crate) fn internal_get_account_by_project(&self, project_id: &ProjectId, account_id: &AccountId) -> Option<ProjectAccount> {
+        self.internal_get_accounts_by_project_or_panic(&project_id).get(&account_id)
+    }
+  
+    // Projects by Account
+  
+    pub(crate) fn internal_get_projects_by_account_or_default(&self, account_id: &AccountId)
+        -> ProjectIdUnorderedSet {
+            self.projects_by_account
+                .get(&account_id)
+                .unwrap_or_else(|| {
+                    UnorderedSet::new(
+                        get_storage_key(StorageKey::ProjectsByAccountInnerKey{
+                            account_id_hash: hash_account_id(&account_id)
+                        })
+                    )
+                })
+    }
+
+    // Tickets by Project
 
     pub(crate) fn internal_get_tickets_by_project_or_panic(&self, project_id: ProjectId) -> TicketAndAccountLookupMap {
         self.tickets_by_project.get(&project_id).expect("Project tickets do not exist.")
@@ -182,8 +253,8 @@ impl IDOContract {
         project_id
     }
 
-    pub(crate) fn internal_change_project_status(&mut self, project_id: ProjectId) {
-        let mut project = self.internal_get_project_or_panic(project_id);
+    pub(crate) fn internal_change_project_status(&mut self, project_id: &ProjectId) {
+        let mut project = self.internal_get_project_or_panic(&project_id);
         let current_time = get_current_time();
         match project.status {
             ProjectStatus::Preparation => {
@@ -197,7 +268,7 @@ impl IDOContract {
             ProjectStatus::Sales => {
                 assert!(project.sale_end_date < current_time, "Cannot change project's status to Distribution.");
                 project.status = ProjectStatus::Distribution;
-                self.internal_distribute_token_to_users(project_id);
+                self.internal_distribute_token_to_users(*project_id);
             }
             _ => panic!("Unable to change project status.")
         }
@@ -208,12 +279,12 @@ impl IDOContract {
 
     // Project Json
 
-    pub(crate) fn internal_get_project(&self, project_id: ProjectId, project: Option<Project>) -> Option<ProjectJson> {
+    pub(crate) fn internal_get_project(&self, project_id: &ProjectId, project: Option<Project>) -> Option<ProjectJson> {
         if let Some(project) = project {
-            let whitelist_accounts = self.internal_get_accounts_by_project_or_panic(project_id).len();
+            let whitelist_accounts = self.internal_get_accounts_by_project_or_panic(&project_id).len();
 
             Some(ProjectJson {
-                id: project_id,
+                id: *project_id,
                 
                 whitelist_start_date: project.whitelist_start_date,
                 whitelist_end_date: project.whitelist_end_date,
@@ -246,7 +317,7 @@ impl IDOContract {
     // Project Whitelist
 
     pub(crate) fn internal_register_whitelist(&mut self, project_id: ProjectId) {
-        let project = self.internal_get_project_or_panic(project_id);                         
+        let project = self.internal_get_project_or_panic(&project_id);                         
         assert_eq!(project.status, ProjectStatus::Whitelist,"Project isn't on whitelist");
         
         assert!(project.is_in_whitelist_period(), "Project isn't on whitelist time");
@@ -265,7 +336,7 @@ impl IDOContract {
     }
 
     // Project Sale
-    pub(crate) fn inner_sale_commit(&mut self, project_id: ProjectId) {
+    pub(crate) fn internal_sale_commit(&mut self, project_id: ProjectId) {
 
     }
 
@@ -273,7 +344,7 @@ impl IDOContract {
 
     pub(crate) fn internal_distribute_token_to_users(&mut self, project_id: ProjectId) {
         // Get project account token sales
-        let project = self.internal_get_project_or_panic(project_id);
+        let project = self.internal_get_project_or_panic(&project_id);
         
     }
 }

@@ -33,7 +33,6 @@ fn test_happy_case() {
     project.whitelist_end_date = whitelist_end_date;
     project.sale_start_date = sale_start_date;
     project.sale_end_date = sale_end_date;
-    project.status = status.clone();
 
     env::log(format!("Before create a project").as_bytes());
 
@@ -68,7 +67,7 @@ fn test_happy_case() {
     emulator.set_account_id_and_desposit(account_a(), account_a(), 0);
     emulator.contract.register_whitelist(project_id);
     println!("User A registers whitelist - {}", account_a());
-    assert!(emulator.contract.is_whitelist(project_id));
+    assert!(emulator.contract.is_whitelist(project_id, None));
 
     let projects_in_account = emulator.contract.projects_by_account.get(&account_a()).unwrap();
     let accounts_and_tickets_in_project = emulator.contract.accounts_by_project.get(&project_id).unwrap();
@@ -85,7 +84,7 @@ fn test_happy_case() {
     let account_c = alice();
     emulator.set_account_id_and_desposit(account_c.clone(), account_c.clone(), 0);
     println!("User C registers whitelist - {}", account_c);
-    assert!(!emulator.contract.is_whitelist(project_id));
+    assert!(!emulator.contract.is_whitelist(project_id, None));
 
     // User A stakes & locks Tier1 for 31 days => Cross contract call
 
@@ -93,9 +92,8 @@ fn test_happy_case() {
     let locked_amount: u128 = 200_00000000;
     let locked_days: u16 = 10;
     let locked_timestamp: Timestamp = increase_timestamp(&whitelist_start_date, locked_days, 0, 0, 0);
-    let expected_staking_tier = StakingTier::Tier1;
-    let expected_staking_tickets: TicketAmount = 1;
-    let expected_allocations: TicketAmount = 0;
+    let expected_staking_tickets: TicketNumber = 1;
+    let expected_allocations: TicketNumber = 0;
 
     let account_json = get_account_json(&account_a(), locked_amount, locked_timestamp);
 
@@ -104,55 +102,20 @@ fn test_happy_case() {
     // Validate stored data
     let project = emulator.contract.projects.get(&project_id).unwrap();
     println!("Staking tier -> Total tickets");
-    assert_eq!(expected_staking_tickets as u64, project.total_staking_tickets);
-    assert_eq!(expected_allocations, project.total_allocations);
+    
     
     let account_tickets = emulator.contract.accounts_by_project.get(&project_id).unwrap();
     let tickets = account_tickets.get(&account_a()).unwrap();
 
     println!("Staking tier -> Account Staking Tickets");
-    assert_eq!(expected_staking_tier, tickets.staking_tier);
-    assert_eq!(expected_staking_tickets, tickets.staking_tickets.eligible_tickets);
-    assert_eq!(expected_staking_tickets, tickets.staking_tickets.deposit_tickets);
-    assert_eq!(expected_staking_tickets, tickets.staking_tickets.ticket_ids.len() as u32);
-    assert_eq!(expected_staking_tickets, tickets.staking_tickets.win_ticket_ids.len() as u32);
+    
 
     println!("Staking tier -> Account Staking Tickets - Allocations");
 
-    assert_eq!(expected_allocations, tickets.allocations);
-    assert_eq!(expected_allocations, tickets.deposit_allocations);
-
-    let ticket_number = tickets.staking_tickets.ticket_ids[0];
-    let ticket_id = build_ticket_id(TicketType::Staking, ticket_number);
-
-    println!("Staking tier -> Project Ticket");
-    let tickets_by_project = emulator.contract.tickets_by_project.get(&project_id);
-    println!("Staking tier -> Project Ticket - Achieved object");
-    if let Some(tickets_by_project) = tickets_by_project {
-        let keys = tickets_by_project.keys_as_vector();
-        let values = tickets_by_project.values_as_vector();
-        println!("Staking tier -> Project Ticket - Ticket Owner - Len: {} - [({},{})]", &tickets_by_project.len(), 0, 0);
-        
-        // let ticket_owner = tickets_by_project.get(&ticket_id);
-        // if let Some(ticket_owner) = ticket_owner {
-        //     println!("Staking tier -> Project Ticket - Assert");
-        //     assert_eq!(account_a, ticket_owner);
-        // } else {
-        //     panic!("Cannot get ticket owner.");
-        // }
-    } else {
-        panic!("Cannot get project ticket.");
-    }
 
     // Validate response data
     emulator.set_account_id_and_desposit(account_a(), account_a(), 0);
     println!("Get project account info for Account A - {}", account_a());
-    let staking_tier_info: ProjectAccountInfoJson = emulator.contract.get_project_account_info(project_id, account_a());
-    println!("Whitelist open - {:#?}", staking_tier_info);
-
-    assert_eq!(account_a(), staking_tier_info.account_id);
-    assert_eq!(project_id, staking_tier_info.project_id);
-    assert_eq!(project.status, staking_tier_info.project_status);
 
     // Return data
     // ProjectAccountInfoJson {
@@ -184,30 +147,8 @@ fn test_happy_case() {
     let project = emulator.contract.projects.get(&project_id).unwrap();
     assert_eq!(ProjectStatus::Sales, project.status);
 
-    let staking_tier_info: ProjectAccountInfoJson = emulator.contract.get_project_account_info(project_id, account_a());
-    println!("Whitelist closed - {:#?}", staking_tier_info);
-
     // User A deposit fund
-    let expected_deposit_amount: Balance = project.token_sale_rate.multiply(ONE_NEAR) 
-        * project.token_amount_per_sale_slot as u128
-        * (expected_staking_tickets + expected_allocations) as u128;
-    let actual_deposit_amount: Balance = emulator.contract.calculate_must_attach_deposit_amount_by_account_id(&account_a(), project_id).into();
-
-    assert_eq!(expected_deposit_amount, actual_deposit_amount);
-
-    emulator.set_account_id_and_desposit(account_a(), account_a(), expected_deposit_amount);
-    emulator.contract.commit(project_id);
-
-    // Assert Project
-    let project = emulator.contract.projects.get(&project_id).unwrap();
-    assert_eq!(expected_deposit_amount, project.total_fund_committed);
     
-    // Assert Project Account Token Sales
-    let actual_account_token_sales = emulator.contract.unwrap_project_account_token_sales(project_id, &account_a()).unwrap();
-    assert_eq!(expected_deposit_amount, actual_account_token_sales.funding_amount);
-
-    let staking_tier_info: ProjectAccountInfoJson = emulator.contract.get_project_account_info(project_id, account_a());
-    println!("Sales period - Deposit - {:#?}", staking_tier_info);
     
     //assert!(false);
 }
@@ -220,42 +161,8 @@ fn test_project_ticket() {
 
     println!("Start testing...");
 
-    let mut project_ticket = emulator.contract.tickets_by_project.get(&project_id).unwrap();
-    assert_eq!(0, project_ticket.len() as u32);
-
-    project_ticket.insert(&"L1".to_string(), &"Account_1".to_string());
-    assert_eq!(1, project_ticket.len() as u32);
-
-    // Update
-    emulator.contract.tickets_by_project.insert(&project_id, &project_ticket);
-
-    // Reload
-    let project_ticket = emulator.contract.tickets_by_project.get(&project_id).unwrap();
-    let keys = project_ticket.keys_as_vector().to_vec();
-    let values = project_ticket.values_as_vector().to_vec();
-
-    println!("Key: {}, Value: {}", keys[0], values[0]);
 
     //assert!(false);
-}
-
-
-#[test]
-fn test_key_storage() {
-    let mut emulator = Emulator::default();
-
-    println!("{:?}", StorageKey::ProjectTicketInnerKey(1).try_to_vec().unwrap());
-    println!("{:?}", StorageKey::ProjectTicketInnerKey(2).try_to_vec().unwrap());
-    println!("{:?}", StorageKey::ProjectTicketInnerKey(3).try_to_vec().unwrap());
-
-    println!("");
-
-    println!("{:?}", StorageKey::ProjectAccountTicketInnerKey(1).try_to_vec().unwrap());
-    println!("{:?}", StorageKey::ProjectAccountTicketInnerKey(2).try_to_vec().unwrap());
-    println!("{:?}", StorageKey::ProjectAccountTicketInnerKey(3).try_to_vec().unwrap());
-    println!("{:?}", StorageKey::ProjectAccountTicketInnerKey(u64::MAX).try_to_vec().unwrap());
-
-    assert!(false);
 }
 
 #[test]

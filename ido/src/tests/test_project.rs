@@ -3,8 +3,8 @@ use crate::tests::test_emulator::*;
 use crate::modules::project::*;
 use crate::*;
 
-pub(crate) fn get_project_1() -> Project {
-    Project {
+pub(crate) fn get_project_1() -> ProjectInput {
+    ProjectInput {
         owner_id: "your.testnet".to_string(),
         whitelist_start_date: 1,
         whitelist_end_date: 2,
@@ -12,16 +12,15 @@ pub(crate) fn get_project_1() -> Project {
         sale_end_date: 5,
         token_contract_id: "your.testnet".to_string(),
         fund_contract_id: "usdc.testnet".to_string(),
-        token_raised_amount: 40000,
-        token_sale_rate: Rate::new(10u64, 1u64),
-        total_fund_committed: 0,
+        token_raised_amount: U128(40000),
+        token_sale_rate_numberator: 10u64,
+        token_sale_rate_denominator: 1u64,
         whitelist_type: WhitelistType::None,
         sale_type: SaleType::Shared {
             min_allocation_per_user: 50,
             max_allocation_per_user: 100,
         },
         distribution_type: DistributionType::Unlocked,
-        status: ProjectStatus::Preparation,
     }
 }
 
@@ -38,13 +37,12 @@ fn test_create_and_get_project() {
     let json_project = &projects[0];
 
     assert_eq!(1, json_project.id, "The created project id must equal to 1.");
-    assert_eq!(project.name, json_project.name, "The project name must be the same.");
 
-    let new_projects = emulator.contract.get_projects(Some(ProjectStatus::Proposed), None, None); 
-    let approved_projects = emulator.contract.get_projects(Some(ProjectStatus::Approved), None, None); 
+    let preparation_projects = emulator.contract.get_projects(Some(ProjectStatus::Preparation), None, None); 
+    let whitelist_projects = emulator.contract.get_projects(Some(ProjectStatus::Whitelist), None, None); 
 
-    assert_eq!(1, new_projects.len(), "The number of NEW projects in the contract is not correct!");
-    assert_eq!(0, approved_projects.len(), "The number of APPROVED projects in the contract is not correct!");
+    assert_eq!(1, preparation_projects.len(), "The number of Preparation projects in the contract is not correct!");
+    assert_eq!(0, whitelist_projects.len(), "The number of Whitelist projects in the contract is not correct!");
 }
 
 #[test]
@@ -75,10 +73,9 @@ fn test_update_project_sales_date_to_end() {
     project.whitelist_end_date = whitelist_end_date;
     project.sale_start_date = sale_start_date;
     project.sale_end_date = sale_end_date;
-    project.status = status.clone();
 
     let project_id = emulator.contract.create_project(project);
-    let project = emulator.contract.internal_get_project_or_panic(project_id);
+    let project = emulator.contract.internal_get_project_or_panic(&project_id);
 
     // Preparation
     assert_eq!(ProjectStatus::Preparation, project.status);
@@ -92,20 +89,20 @@ fn test_update_project_sales_date_to_end() {
     println!("Project's status: {:?}, Current Time: {}, Whitelist Start Time: {}", project.status, before_whitelist_time, whitelist_start_date);
     emulator.contract.change_project_status(project_id);
     
-    let project = emulator.contract.internal_get_project_or_panic(project_id);
+    let project = emulator.contract.internal_get_project_or_panic(&project_id);
     assert_eq!(ProjectStatus::Whitelist, project.status);
 
     // Sales
     emulator.contract.update_project_sales_date(project_id);
     emulator.contract.change_project_status(project_id);
 
-    let project = emulator.contract.internal_get_project_or_panic(project_id);
+    let project = emulator.contract.internal_get_project_or_panic(&project_id);
     assert_eq!(ProjectStatus::Sales, project.status);
 
     // Distribution
     emulator.contract.update_project_sales_date_to_end(project_id);
     emulator.contract.change_project_status(project_id);
 
-    let project = emulator.contract.internal_get_project_or_panic(project_id);
+    let project = emulator.contract.internal_get_project_or_panic(&project_id);
     assert_eq!(ProjectStatus::Distribution, project.status);
 }
