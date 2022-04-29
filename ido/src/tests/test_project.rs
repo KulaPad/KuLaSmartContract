@@ -38,13 +38,13 @@ fn test_create_and_get_project() {
     let json_project = &projects[0];
 
     assert_eq!(1, json_project.id, "The created project id must equal to 1.");
-    assert_eq!(project.name, json_project.name, "The project name must be the same.");
 
-    let new_projects = emulator.contract.get_projects(Some(ProjectStatus::Proposed), None, None); 
-    let approved_projects = emulator.contract.get_projects(Some(ProjectStatus::Approved), None, None); 
+
+    let new_projects = emulator.contract.get_projects(Some(ProjectStatus::Preparation), None, None); 
+    let approved_projects = emulator.contract.get_projects(Some(ProjectStatus::Whitelist), None, None); 
 
     assert_eq!(1, new_projects.len(), "The number of NEW projects in the contract is not correct!");
-    assert_eq!(0, approved_projects.len(), "The number of APPROVED projects in the contract is not correct!");
+    assert_eq!(0, approved_projects.len(), "The number of Whitelist projects in the contract is not correct!");
 }
 
 #[test]

@@ -296,4 +296,15 @@ impl IDOContract {
         let project = self.internal_get_project_or_panic(project_id);
         
     }
+
+    pub(crate) fn internal_get_required_xtoken(&self, project_id: ProjectId) -> U128{
+        let project = self.internal_get_project_or_panic(project_id);
+        
+        if let WhitelistType::XToken(xtoken) = project.whitelist_type{
+            U128(xtoken)
+        } else{
+            panic!("Whitelist type is not require xtokens");
+        }
+        
+    }
 }
