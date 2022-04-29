@@ -97,7 +97,7 @@ impl IDOContract{
             accounts_by_project: LookupMap::new(get_storage_key(StorageKey::AccountsByProjectKey)),
             tickets_by_project: LookupMap::new(get_storage_key(StorageKey::TicketsByProjectKey)),
             projects_by_account: LookupMap::new(get_storage_key(StorageKey::ProjectsByAccountKey)),
-            test_mode_enabled: test_mode_enabled.unwrap_or(true),
+            test_mode_enabled: test_mode_enabled.unwrap_or(false),
         };
 
         if let Some(funding_ft_token_ids) = funding_ft_token_ids {
@@ -123,8 +123,8 @@ impl IDOContract{
 
     // Project call functions
 
-    pub fn create_project(&mut self, project: Project) -> ProjectId{
-        self.internal_create_project(project)
+    pub fn create_project(&mut self, project: ProjectInput) -> ProjectId{
+        self.internal_create_project(Project::from(project))
     }
 
     pub fn change_project_status(&mut self, project_id: ProjectId) {
@@ -139,14 +139,18 @@ impl IDOContract{
         .filter(|(_, project)| match &status { None => true, Some(s) => &project.status == s })
         .skip(from_index.unwrap_or(0) as usize)
         .take(limit.unwrap_or(DEFAULT_PAGE_SIZE) as usize)
-        .map(|(project_id, project)| self.internal_get_project(project_id.clone(), Some(project)).unwrap())
+        .map(|(project_id, project)| self.internal_get_project(&project_id, Some(project)).unwrap())
         .collect()
     }
 
     pub fn get_project(&self, project_id: ProjectId) -> Option<ProjectJson> {
         let project = self.projects.get(&project_id);
 
-        self.internal_get_project(project_id, project)
+        self.internal_get_project(&project_id, project)
+    }
+
+    pub fn get_project_account_info(&self, project_id: ProjectId, account_id: Option<AccountId>) -> ProjectAccountJson {
+        self.internal_get_project_account_info(project_id, account_id.unwrap_or(env::signer_account_id()))
     }
     
     // Project Whitelist

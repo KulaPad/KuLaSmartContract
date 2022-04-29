@@ -3,19 +3,18 @@ use crate::*;
 #[near_bindgen]
 impl IDOContract{
 
-    pub(crate) fn internal_new_project_1()-> Project{
-        Project{
+    pub(crate) fn internal_new_project_1()-> ProjectInput{
+        ProjectInput{
             owner_id: "alevoro.near".to_string(),
             whitelist_start_date: 1651172401000000000,
             whitelist_end_date: 1651604401000000000,
             sale_start_date: 1651604401000000000,
             sale_end_date: 1652068717000000000,
             token_contract_id: "contract.alevoro.near".to_string(),
-            token_raised_amount: 4_000_000,
-            token_sale_rate: Rate::new(1u64, 100u64),
+            token_raised_amount: U128(1000000000000000),
+            token_sale_rate_numberator: 10u64,
+            token_sale_rate_denominator: 1u64,
             fund_contract_id: "".to_string(),
-            total_fund_committed: 4_000_000,
-            status:ProjectStatus::Whitelist,
             whitelist_type: WhitelistType::None,
             sale_type : SaleType::Shared{
                 min_allocation_per_user: 10,
@@ -27,19 +26,18 @@ impl IDOContract{
     }
 
 
-    pub(crate) fn internal_new_project_2()-> Project{
-        Project{
+    pub(crate) fn internal_new_project_2()-> ProjectInput{
+        ProjectInput{
             owner_id: "ref_finance.near".to_string(),
             whitelist_start_date: 1651172401000000000,
             whitelist_end_date: 1651604401000000000,
             sale_start_date: 1651604401000000000,
             sale_end_date: 1652068717000000000,
             token_contract_id: "contract.ref_finance.near".to_string(),
-            token_raised_amount: 4_000_000,
-            token_sale_rate: Rate::new(1u64, 100u64),
+            token_raised_amount: U128(1000000000000000),
+            token_sale_rate_numberator: 10u64,
+            token_sale_rate_denominator: 1u64,
             fund_contract_id: "".to_string(),
-            total_fund_committed: 4_000_000,
-            status:ProjectStatus::Whitelist,
             whitelist_type: WhitelistType::Ticket,
             sale_type : SaleType::Shared{
                 min_allocation_per_user: 10,
@@ -51,19 +49,18 @@ impl IDOContract{
     }
 
 
-    pub(crate) fn internal_new_project_3()-> Project{
-        Project{
+    pub(crate) fn internal_new_project_3()-> ProjectInput{
+        ProjectInput{
             owner_id: "near_dao.near".to_string(),
             whitelist_start_date: 1651172401000000000,
             whitelist_end_date: 1651604401000000000,
             sale_start_date: 1651604401000000000,
             sale_end_date: 1652068717000000000,
             token_contract_id: "contract.near_dao.near".to_string(),
-            token_raised_amount: 4_000_000,
-            token_sale_rate: Rate::new(1u64, 100u64),
+            token_raised_amount: U128(1000000000000000),
+            token_sale_rate_numberator: 10u64,
+            token_sale_rate_denominator: 1u64,
             fund_contract_id: "".to_string(),
-            total_fund_committed: 4_000_000,
-            status:ProjectStatus::Whitelist,
             whitelist_type: WhitelistType::XToken(100),
             sale_type : SaleType::Shared{
                 min_allocation_per_user: 10,
@@ -73,40 +70,29 @@ impl IDOContract{
 
         }
     }
-    // pub(crate) fn internal_new_project_3()-> ProjectInfo{
-    //     ProjectInfo{
-    //         owner_id: "near_dao.near".to_string(),
-    //         name: "Near DAO".to_string(),
-    //         logo_url: "https://neardao.com/img/logo_with_text_cropt.png".to_string(),
-    //         description: "Launch a DAO in 5 minutes".to_string(),
-    //         introduction:"Near Metabuild Hackathon top 1".to_string(),
-    //         categories: vec!["DAO".to_string(),"DeFi".to_string()],
-    //         whitelist_start_date: 1641052657000000000,
-    //         whitelist_end_date: 1641398257000000000,
-    //         sale_start_date: 1641398257000000000,
-    //         sale_end_date: 1641830257000000000,
-    //         token_contract_id: "contract.near_dao.near".to_string(),
-    //         token_symbol:"NDAO".to_string(),
-    //         token_decimal: 8,
-    //         token_amount_per_sale_slot: 100,
-    //         token_raised_amount: 400_000,
-    //         token_sale_rate: Rate::new(1u64, 100u64),
-    //         fund_contract_id: None,
-    //         fund_symbol: "Near".to_string(),
-    //         total_fund_received: 0,
-    //         sale_type: SaleType::FullUnlocked,
-    //         configuration: ProjectConfiguration{ 
-    //             max_staking_tickets_per_user: 500, 
-    //             max_win_tickets_per_user: 250, 
-    //         },
-    //         status:ProjectStatus::Rejected,
-    //         total_allocations: 0,
-    //         total_staking_tickets: 0,
-    //         total_social_tickets: 0,
-    //         total_referral_tickets: 0,
-    //     }
-    // }
 
+    pub(crate) fn internal_new_project_4()-> ProjectInput{
+        ProjectInput{
+            owner_id: "owner_titan.testnet".to_string(),
+            whitelist_start_date: 1640995200000000000,
+            whitelist_end_date: 1641250800000000000,
+            sale_start_date: 1641254400000000000,
+            sale_end_date: 1641340800000000000,
+            token_contract_id: "titan.testnet".to_string(),
+            fund_contract_id: "usn.testnet".to_string(),
+            token_raised_amount: U128(1000000000000000),
+            token_sale_rate_numberator: 10u64,
+            token_sale_rate_denominator: 1u64,
+            whitelist_type: WhitelistType::None,
+            sale_type: SaleType::Shared {
+                min_allocation_per_user: 5000000000,
+                max_allocation_per_user: 10000000000,
+            },
+            distribution_type: DistributionType::Unlocked,
+        }
+    }
+}
+    
     // pub(crate) fn internal_new_project_4()-> ProjectInfo{
     //     ProjectInfo{
     //         owner_id: "cryptocubes.near".to_string(),
@@ -346,4 +332,3 @@ impl IDOContract{
     //     }
     // }
 
-}

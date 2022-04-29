@@ -1,5 +1,5 @@
 use crate::main::{init};
-use KuLaPad_ido::staking_contract::AccountJson;
+use kulapad_ido::staking_contract::AccountJson;
 use near_sdk_sim::{call, view,DEFAULT_GAS, STORAGE_AMOUNT, to_yocto};
 use near_sdk_sim::transaction::{ExecutionStatus};
 

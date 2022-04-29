@@ -1,4 +1,4 @@
-export file=../res/KuLaPad_token.wasm
+export file=../res/kulapad_token.wasm
 
 near dev-deploy --wasmFile $file
 

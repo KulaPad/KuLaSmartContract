@@ -1,7 +1,7 @@
 use crate::main::{init};
 use near_sdk_sim::{call, view, DEFAULT_GAS, STORAGE_AMOUNT, to_yocto};
 use near_sdk_sim::transaction::{ExecutionStatus};
-
+use kulapad_ido::project::{ProjectJson};
 
 #[test]
 pub fn test_join_whitelist(){
@@ -69,9 +69,8 @@ pub fn test_resolve_get_account_point_for_register_whitelist(){
     // Lock token
     alice.call(
         staking_contract.account_id(),
-        "internal_lock",
+        "lock",
         &json!({
-            "account_id": alice.account_id(),
             "amount" : 1_000_000_000_000_000_000_000_000,
             "locked_time": 8460000000000000 //about 100 days
         }).to_string().as_bytes(),
@@ -87,29 +86,44 @@ pub fn test_resolve_get_account_point_for_register_whitelist(){
         }).to_string().as_bytes(),
     );
 
-    let point_require : U128 = root.view(
+    let project : ProjectJson = root.view(
         ido_contract.account_id(),
-        "internal_get_required_xtoken",
+        "get_project",
         &json!({
             "project_id" : 3
         }).to_string().as_bytes(),
         DEFAULT_GAS,
         0
-    );
+    ).unwrap_json();
 
-    assert!(point_staking.0 >= (point_require.0 as u64),"Not enough XToken point");
+    if let WhitelistType::XToken(xtoken) = project.whitelist_type{
+        assert!(point_staking.0 >= (point_require.0 as u64),"Not enough XToken point");
 
-    alice.call(
-        ido_contract.account_id(),
-        "register_whitelist",
-        &json!({
-            "project_id" : 3
-        }).to_string().as_bytes(),
-        DEFAULT_GAS,
-        0
-    );
+        alice.call(
+            ido_contract.account_id(),
+            "register_whitelist",
+            &json!({
+                "project_id" : 3
+            }).to_string().as_bytes(),
+            DEFAULT_GAS,
+            0
+        );
 
-    assert_eq!(is_whitelisted,false, "Joined whitelist when not call");
+        let is_whitelisted : bool = root.view(
+            ido_contract.account_id(),
+            "is_whitelist",
+            &json!({
+                "project_id" : 2
+            }).to_string().as_bytes(),
+        );
+        
+        assert_eq!(is_whitelisted,false, "Joined whitelist when not call");
+
+    } else{
+        panic!("Whitelist type is not require xtokens");
+    };
+
+    
 
     
 }
