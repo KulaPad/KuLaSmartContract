@@ -56,12 +56,9 @@ impl IDOContract{
 
     pub (crate) fn proccess_register_whitelist(&mut self, account_id: AccountId, project_id: ProjectId, point: U64, xtoken: u128) -> bool{
         env::log(format!("proccess_register_whitelist(account_id: {}, project_id: {}, point: {})", account_id, project_id,point.0).as_bytes());
-
         assert!((point.0 as u128) >= xtoken,"User don't have enough XToken");
-
         self.internal_add_account(&account_id, project_id);
+
         true
-
-
     }
 }

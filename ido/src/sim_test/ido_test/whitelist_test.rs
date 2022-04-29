@@ -13,7 +13,7 @@ pub fn test_join_whitelist(){
         &json!({
             "project_id" : 1
         }).to_string().as_bytes(),
-    ); // nếu lỗi thì thử .unwrap_json()
+    ); // if there is some error,try .unwrap_json()
 
     assert_eq!(is_whitelisted,false, "Joined whitelist when not call");
 
