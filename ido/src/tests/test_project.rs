@@ -49,7 +49,7 @@ fn test_create_and_get_project() {
 #[test]
 fn test_create_sample_projects() {
     let mut emulator = Emulator::default();
-
+    emulator.update_context("alice".to_string(), "owner".to_string(), 0);
     emulator.contract.create_sample_projects();
 
     // let projects = emulator.contract.get_projects(None, None, None); 
@@ -60,7 +60,7 @@ fn test_create_sample_projects() {
 #[test]
 fn test_update_project_sales_date_to_end() {
     let mut emulator = Emulator::default();
-
+    emulator.update_context("alice".to_string(), "owner".to_string(), 0);
     emulator.contract.create_sample_projects();
 
     let whitelist_start_date = 1640995200000000000;

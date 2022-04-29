@@ -3,6 +3,42 @@ use near_sdk_sim::{call, view, DEFAULT_GAS, STORAGE_AMOUNT, to_yocto};
 use near_sdk_sim::transaction::{ExecutionStatus};
 use kulapad_ido::project::{ProjectJson};
 
+pub fn init_ido_whitelist() -> (UserAccount,UserAccount,UserAccount,UserAccount,UserAccount,UserAccount){
+    let (root,alice,ido,ft_contract,staking_contract,ido_contract) = init();
+
+    ido.call(
+        ido_contract.account_id(),
+        "internal_change_project_status",
+        &json!({
+            "project_id" : 1
+        }).to_string().as_bytes(),
+        DEFAULT_GAS,
+        0
+    );
+
+    ido.call(
+        ido_contract.account_id(),
+        "internal_change_project_status",
+        &json!({
+            "project_id" : 2
+        }).to_string().as_bytes(),
+        DEFAULT_GAS,
+        0
+    );
+
+    ido.call(
+        ido_contract.account_id(),
+        "internal_change_project_status",
+        &json!({
+            "project_id" : 3
+        }).to_string().as_bytes(),
+        DEFAULT_GAS,
+        0
+    );
+
+    (root,alice,ido,ft_contract,staking_contract,ido_contract)
+}
+
 #[test]
 pub fn test_join_whitelist(){
     let (root,alice,ido,ft_contract,staking_contract,ido_contract) = init();
@@ -94,7 +130,7 @@ pub fn test_resolve_get_account_point_for_register_whitelist(){
         }).to_string().as_bytes(),
         DEFAULT_GAS,
         0
-    ).unwrap_json();
+    ).unwrap();
 
     if let WhitelistType::XToken(xtoken) = project.whitelist_type{
         assert!(point_staking.0 >= (point_require.0 as u64),"Not enough XToken point");

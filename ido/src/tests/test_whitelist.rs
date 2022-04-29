@@ -8,6 +8,8 @@ fn test_register_whitelist() {
     emulator.update_context("alice".to_string(), "owner".to_string(), 0);
 
     emulator.contract.create_sample_projects();
+    emulator.contract.internal_change_project_status(1);
+    emulator.contract.internal_change_project_status(2);
     emulator.update_context("alice".to_string(), "bob".to_string(), 0);
     emulator.contract.register_whitelist(1);
     emulator.contract.register_whitelist(2);
@@ -20,6 +22,8 @@ fn test_is_whitelist(){
     emulator.update_context("alice".to_string(), "owner".to_string(), 0);
 
     emulator.contract.create_sample_projects();
+    emulator.contract.internal_change_project_status(1);
+    emulator.contract.internal_change_project_status(2);
     emulator.update_context("alice".to_string(), "bob".to_string(), 0);
     emulator.contract.register_whitelist(1);
     assert!(emulator.contract.is_whitelist(1,None));

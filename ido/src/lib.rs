@@ -97,7 +97,7 @@ impl IDOContract{
             accounts_by_project: LookupMap::new(get_storage_key(StorageKey::AccountsByProjectKey)),
             tickets_by_project: LookupMap::new(get_storage_key(StorageKey::TicketsByProjectKey)),
             projects_by_account: LookupMap::new(get_storage_key(StorageKey::ProjectsByAccountKey)),
-            test_mode_enabled: test_mode_enabled.unwrap_or(false),
+            test_mode_enabled: test_mode_enabled.unwrap_or(true),
         };
 
         if let Some(funding_ft_token_ids) = funding_ft_token_ids {
