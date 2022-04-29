@@ -20,5 +20,5 @@ fn test_is_whitelist(){
 
     emulator.contract.create_sample_projects();
     emulator.contract.register_whitelist(8);
-    assert!(emulator.contract.is_whitelist(8));
+    assert!(emulator.contract.is_whitelist(8, None));
 }

@@ -3,9 +3,9 @@ use near_sdk_sim::{init_simulator, UserAccount, DEFAULT_GAS, STORAGE_AMOUNT, to_
 use near_sdk_sim::transaction::ExecutionStatus;
 
 near_sdk_sim::lazy_static_include::lazy_static_include_bytes! {
-    IDO_WASM_FILE => "../res/KuLaPad_ido.wasm",
-    STAKING_WASM_FILE => "../res/KuLaPad_staking.wasm",
-    TOKEN_WASM_FILE => "../res/KuLaPad_token.wasm"
+    IDO_WASM_FILE => "../res/kulapad_ido.wasm",
+    STAKING_WASM_FILE => "../res/kulapad_staking.wasm",
+    TOKEN_WASM_FILE => "../res/kulapad_token.wasm"
 }
 
 const STAKING_CONTRACT_ID: &str = "staking_contract";
