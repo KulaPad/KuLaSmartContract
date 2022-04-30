@@ -3,31 +3,14 @@ use crate::*;
 #[near_bindgen]
 impl IDOContract{
 
-    fn internal_new_project_1()-> ProjectInput{
-        ProjectInput {
-            owner_id: "owner_titan.testnet".to_string(),
-            whitelist_start_date: 1640995200000000000,
-            whitelist_end_date: 1641250800000000000,
-            sale_start_date: 1641254400000000000,
-            sale_end_date: 1641340800000000000,
-            token_contract_id: "titan.testnet".to_string(),
-            fund_contract_id: "usn.testnet".to_string(),
-            token_raised_amount: U128(1000000000000000),
-            token_sale_rate_numberator: 10u64,
-            token_sale_rate_denominator: 1u64,
-            whitelist_type: WhitelistType::None,
-            sale_type: SaleType::Shared {
-                min_allocation_per_user: 5000000000,
-                max_allocation_per_user: 10000000000,
-            },
-            distribution_type: DistributionType::Unlocked,
-        }
-    }
 
     pub fn create_sample_projects(&mut self) {
         self.assert_test_mode_and_owner();
-
+        
         self.create_project(Self::internal_new_project_1());
+        self.create_project(Self::internal_new_project_2());
+        self.create_project(Self::internal_new_project_3());
+        self.create_project(Self::internal_new_project_4());
     }
 
     pub fn create_sample_project(&mut self, project_no: u8) {

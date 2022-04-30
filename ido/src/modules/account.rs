@@ -100,7 +100,7 @@ impl IDOContract {
         };
         
         // Get project by id
-        let project = self.internal_get_project_or_panic(&project_id);
+        let project = self.internal_get_project_or_panic(project_id);
 
         if project.status == ProjectStatus::Preparation {
             return account_json;

@@ -23,7 +23,7 @@ impl IDOContract {
     #[payable]
     pub fn claim(&mut self, project_id: ProjectId) -> Promise {
         let account_id: AccountId = env::predecessor_account_id();
-        let project = self.internal_get_project_or_panic(&project_id);
+        let project = self.internal_get_project_or_panic(project_id);
         assert!(project.is_in_distribution_period(), "The project isn't in distribution period.");
 
         assert_one_yocto();

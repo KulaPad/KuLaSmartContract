@@ -77,7 +77,7 @@ impl IDOContract {
         // Verify staking_info.account_id vs account_id 
         assert_eq!(account_id.clone(), staking_account_info.account_id, "The staking account is not equal to current account id.");
 
-        let mut project = self.internal_get_project_or_panic(&project_id);
+        let mut project = self.internal_get_project_or_panic(project_id);
 
         // Project's status must be whitelist & current time is between whitelist_start_date and whitelist_end_date
         project.assert_whitelist_period();

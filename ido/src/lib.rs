@@ -15,6 +15,7 @@ pub type ProjectIdUnorderedSet = UnorderedSet<ProjectId>;
 
 use crate::modules::project::*;
 use crate::modules::account::*;
+use crate::modules::xtoken::*;
 use crate::utils::*;
 use crate::staking_contract::*;
 use crate::ft_contract::*;
@@ -30,6 +31,7 @@ pub const TOKEN_DECIMAL: u8 = 8;
 
 pub const GAS_FUNCTION_CALL: u64 = 5_000_000_000_000;
 pub const GAS_FUNCTION_CALL_UPDATE_STAKING_TIER: u64 = 50_000_000_000_000;
+pub const GAS_FUNCTION_CALL_GET_USER_POINT: u64 = 50_000_000_000_000;
 pub const NO_DEPOSIT: u128 = 0;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -95,7 +97,7 @@ impl IDOContract{
             accounts_by_project: LookupMap::new(get_storage_key(StorageKey::AccountsByProjectKey)),
             tickets_by_project: LookupMap::new(get_storage_key(StorageKey::TicketsByProjectKey)),
             projects_by_account: LookupMap::new(get_storage_key(StorageKey::ProjectsByAccountKey)),
-            test_mode_enabled: test_mode_enabled.unwrap_or(false),
+            test_mode_enabled: test_mode_enabled.unwrap_or(true),
         };
 
         if let Some(funding_ft_token_ids) = funding_ft_token_ids {
@@ -126,7 +128,7 @@ impl IDOContract{
     }
 
     pub fn change_project_status(&mut self, project_id: ProjectId) {
-        self.internal_change_project_status(&project_id);
+        self.internal_change_project_status(project_id);
     }
     
     // Project view functions
@@ -196,7 +198,7 @@ impl IDOContract{
     pub fn close_project_whitelist(&mut self, project_id: ProjectId) {
         println!("close_project_whitelist - inside");
         // Get project
-        let mut project = self.internal_get_project_or_panic(&project_id);
+        let mut project = self.internal_get_project_or_panic(project_id);
         let current_time = get_current_time();
 
         println!("close_project_whitelist - get_current_time");
