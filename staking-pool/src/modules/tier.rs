@@ -1,7 +1,8 @@
 use crate::*;
 use near_sdk::collections::UnorderedMap;
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug)]
+#[serde(crate = "near_sdk::serde")]
 pub enum Tier {
     Tier0,
     Tier1,

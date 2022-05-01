@@ -6,7 +6,7 @@ mod enumeration;
 
 use near_sdk::collections::LookupMap;
 use near_sdk::{near_bindgen, AccountId, env, PanicOnDefault, Balance, EpochHeight, BlockHeight, BorshStorageKey, Promise, PromiseResult, PromiseOrValue, ext_contract};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize,};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::json_types::{U128, U64};
 
@@ -27,11 +27,11 @@ pub struct Config {
     // Percent reward per 1 block
     pub reward_numerator: u32,
     /// What is?
-    pub reward_denumerator: u64,
+    pub reward_denumerator: u32,
     pub total_apr: u32,
 
     /// the config for each user Tier
-    pub tier_point_config: TierMinPointConfigs,
+    pub tier_point_configs: TierMinPointConfigs,
 }
 
 impl Config {
@@ -47,7 +47,7 @@ impl Config {
     }
 
     pub fn set_tier_min_point_cfg(&mut self, tier: Tier, min_point: u64) {
-        self.tier_point_config.insert(&tier, &min_point);
+        self.tier_point_configs.insert(&tier, &min_point);
     }
 }
 
@@ -56,7 +56,7 @@ impl Default for Config {
         // By default APR 15%
         Self {
             reward_numerator: 715, reward_denumerator: 100000000000, total_apr: 15,
-            tier_point_config: Config::get_default_tier_min_point_cfg(),
+            tier_point_configs: Config::get_default_tier_min_point_cfg(),
         }
     }
 }
@@ -172,10 +172,10 @@ impl StakingContract {
     }
 
     /// Get user staking tier and point by account id
-    pub fn get_user_staking_tier(&self, account_id: AccountId) -> (Tier, U64) {
+    pub fn get_user_tier(&self, account_id: AccountId) -> (Tier, U64) {
         let point = self.get_user_point(account_id);
         let mut user_tier = Tier::Tier0;
-        for (tier, min_point) in self.config.tier_point_config.to_vec() {
+        for (tier, min_point) in self.config.tier_point_configs.to_vec() {
             if point >= min_point {
                 user_tier = tier
             } else {
@@ -196,9 +196,9 @@ impl StakingContract {
     ///     100 + 48 + 9 = 157
     ///
     /// return Vec<(Tier, min_tier_point, total_valid_point_at_this_tier)>
-    pub fn get_user_staking_matched_tiers(&self, mut point: U64) -> Vec<(Tier, U64, U64)> {
+    pub fn get_matched_tiers(&self, mut point: U64) -> Vec<(Tier, U64, U64)> {
         let mut tiers: Vec<(Tier, U64, U64)> = vec![];
-        for (tier, min_point) in self.config.tier_point_config.to_vec().iter().rev() {
+        for (tier, min_point) in self.config.tier_point_configs.to_vec().iter().rev() {
             if min_point <= &0 {
                 // tier0
                 let tier_point = point;
@@ -261,7 +261,7 @@ mod tests {
             reward_numerator: 1500,
             reward_denumerator: 10000000,
             total_apr: 15,
-            tier_point_config: Config::get_default_tier_min_point_cfg(),
+            tier_point_configs: Config::get_default_tier_min_point_cfg(),
         });
 
         assert_eq!(contract.owner_id, accounts(1).to_string(), "Contract owner should be equal {}", accounts(1).to_string());
@@ -382,7 +382,7 @@ mod tests {
     }
 
     #[test]
-    fn get_user_staking_tier_test() {
+    fn get_user_tier_test() {
 
     }
 
