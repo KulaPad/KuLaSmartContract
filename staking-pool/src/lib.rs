@@ -4,7 +4,7 @@ mod internal;
 mod core_impl;
 mod enumeration;
 
-use near_sdk::collections::LookupMap;
+use near_sdk::collections::{UnorderedSet,LookupMap};
 use near_sdk::{near_bindgen, AccountId, env, PanicOnDefault, Balance, EpochHeight, BlockHeight, BorshStorageKey, Promise, PromiseResult, PromiseOrValue, ext_contract};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize,};
 use near_sdk::serde::{Deserialize, Serialize};
@@ -13,7 +13,6 @@ use near_sdk::json_types::{U128, U64};
 use crate::modules::account::{Account, AccountJson, UpgradableAccount};
 use crate::modules::tier::{TierMinPointConfigs, Tier};
 pub use crate::enumeration::PoolInfo;
-use crate::Tier::Tier0;
 use crate::util::*;
 
 
@@ -21,33 +20,53 @@ pub const NO_DEPOSIT: Balance = 0;
 pub const DEPOSIT_ONE_YOCTOR: Balance = 1;
 pub const NUM_EPOCHS_TO_UNLOCK: EpochHeight = 1;
 
-#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Clone, Copy)]
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Config {
     // Percent reward per 1 block
-    pub reward_numerator: u32,
+    pub reward_numerator: u64,
     /// What is?
-    pub reward_denumerator: u32,
-    pub total_apr: u32,
+    pub reward_denumerator: u64,
+    pub total_apr: u64,
 
     /// the config for each user Tier
-    pub tier_point_configs: TierMinPointConfigs,
+    pub tier_point_configs: Vec<TierMinPointConfigs>,
 }
 
 impl Config {
-    pub fn get_default_tier_min_point_cfg() -> TierMinPointConfigs {
-        let mut cfg = TierMinPointConfigs::new(StorageKey::PointConfigKey);
-        cfg.insert(&Tier::Tier0, &0);
-        cfg.insert(&Tier::Tier1, &100);
-        cfg.insert(&Tier::Tier2, &1_000);
-        cfg.insert(&Tier::Tier3, &5_000);
-        cfg.insert(&Tier::Tier4, &10_000);
+    pub fn get_default_tier_min_point_cfg() -> Vec<TierMinPointConfigs> {
+       
+        let mut cfg = Vec::new();
+        cfg.push(TierMinPointConfigs{
+            tier: Tier::Tier0,
+            min_point: 0
+        });
+        cfg.push(TierMinPointConfigs{
+            tier: Tier::Tier1,
+            min_point: 100
+        });
+        cfg.push(TierMinPointConfigs{
+            tier: Tier::Tier2,
+            min_point: 1_000
+        });
+        cfg.push(TierMinPointConfigs{
+            tier: Tier::Tier2,
+            min_point: 5_000
+        });
+        cfg.push(TierMinPointConfigs{
+            tier: Tier::Tier3,
+            min_point: 10_000
+        });
 
         return cfg;
     }
 
     pub fn set_tier_min_point_cfg(&mut self, tier: Tier, min_point: u64) {
-        self.tier_point_configs.insert(&tier, &min_point);
+        let tier_min_point_configs = TierMinPointConfigs{
+            tier: tier,
+            min_point: min_point
+        };
+        self.tier_point_configs.push(tier_min_point_configs);
     }
 }
 
@@ -157,7 +176,7 @@ impl StakingContract {
 
     /// create or update tier min point config
     pub fn set_tier_point(&mut self, tier: Tier, min_point: U64) {
-        self.config.set_tier_min_point_cfg(tier, min_point as u64);
+        self.config.set_tier_min_point_cfg(tier, min_point.0);
     }
 
     /// Get user point(xKula) amount by account id
@@ -165,7 +184,7 @@ impl StakingContract {
         let account: Option<UpgradableAccount> = self.accounts.get(&account_id);
         if account.is_some() {
             let acc: Account = Account::from(account.unwrap());
-            U128(acc.point) as U64
+            U64(acc.point as u64)
         } else {
             U64(0)
         }
@@ -175,9 +194,10 @@ impl StakingContract {
     pub fn get_user_tier(&self, account_id: AccountId) -> (Tier, U64) {
         let point = self.get_user_point(account_id);
         let mut user_tier = Tier::Tier0;
-        for (tier, min_point) in self.config.tier_point_configs.to_vec() {
-            if point >= min_point {
-                user_tier = tier
+        let configs = self.config.tier_point_configs.clone();
+        for cfg in configs {
+            if point.0 >= cfg.min_point {
+                user_tier = cfg.tier
             } else {
                 break
             }
@@ -198,20 +218,24 @@ impl StakingContract {
     /// return Vec<(Tier, min_tier_point, total_valid_point_at_this_tier)>
     pub fn get_matched_tiers(&self, mut point: U64) -> Vec<(Tier, U64, U64)> {
         let mut tiers: Vec<(Tier, U64, U64)> = vec![];
-        for (tier, min_point) in self.config.tier_point_configs.to_vec().iter().rev() {
-            if min_point <= &0 {
+        let configs = self.config.tier_point_configs.clone();
+        for cfg in configs.iter().rev() {
+            if cfg.min_point <= 0 {
                 // tier0
                 let tier_point = point;
-                tiers.push((tier as Tier, *min_point as U64, tier_point as U64));
+                tiers.push((cfg.tier.clone(), U64(cfg.min_point), tier_point));
 
                 point = U64(0);
             } else {
+                let mut point_u64 = point.0;
                 // has this tier
-                if point >= *min_point {
-                    let tier_point = *min_point * (point / *min_point); // NOTE: u64 division so we don't need to floor
-                    tiers.push((tier as Tier, *min_point as U64, tier_point as U64));
+                if point_u64 >= cfg.min_point {
+                    let tier_point = cfg.min_point * (point_u64 / cfg.min_point); // NOTE: u64 division so we don't need to floor
+                    tiers.push((cfg.tier.clone() , U64(cfg.min_point), U64(tier_point)));
 
-                    point -= tier_point;
+                    point_u64 -= tier_point;
+
+                    point = U64(point_u64);
                 }
             }
         }
