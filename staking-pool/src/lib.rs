@@ -11,7 +11,7 @@ use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::json_types::{U128, U64};
 
 use crate::modules::account::{Account, AccountJson, UpgradableAccount};
-use crate::modules::tier::{TierMinPointConfigs, Tier};
+use crate::modules::tier::{TierMinPointConfig, Tier};
 pub use crate::enumeration::PoolInfo;
 use crate::util::*;
 
@@ -30,30 +30,30 @@ pub struct Config {
     pub total_apr: u64,
 
     /// the config for each user Tier
-    pub tier_point_configs: Vec<TierMinPointConfigs>,
+    pub tier_point_configs: Vec<TierMinPointConfig>,
 }
 
 impl Config {
-    pub fn get_default_tier_min_point_cfg() -> Vec<TierMinPointConfigs> {
+    pub fn get_default_tier_min_point_cfg() -> Vec<TierMinPointConfig> {
        
         let mut cfg = Vec::new();
-        cfg.push(TierMinPointConfigs{
+        cfg.push(TierMinPointConfig{
             tier: Tier::Tier0,
             min_point: 0
         });
-        cfg.push(TierMinPointConfigs{
+        cfg.push(TierMinPointConfig{
             tier: Tier::Tier1,
             min_point: 100
         });
-        cfg.push(TierMinPointConfigs{
+        cfg.push(TierMinPointConfig{
             tier: Tier::Tier2,
             min_point: 1_000
         });
-        cfg.push(TierMinPointConfigs{
+        cfg.push(TierMinPointConfig{
             tier: Tier::Tier2,
             min_point: 5_000
         });
-        cfg.push(TierMinPointConfigs{
+        cfg.push(TierMinPointConfig{
             tier: Tier::Tier3,
             min_point: 10_000
         });
@@ -62,11 +62,15 @@ impl Config {
     }
 
     pub fn set_tier_min_point_cfg(&mut self, tier: Tier, min_point: u64) {
-        let tier_min_point_configs = TierMinPointConfigs{
+        let tier_min_point_configs = TierMinPointConfig{
             tier: tier,
             min_point: min_point
         };
         self.tier_point_configs.push(tier_min_point_configs);
+    }
+
+    pub fn reset_tier_min_point_cfg(&mut self) {
+        self.tier_point_configs = Vec::new();
     }
 }
 

@@ -18,7 +18,7 @@ impl Default for Tier {
 /// Map<Tier, min_point_to_achieve_this_tier>
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize,Clone,Debug)]
 #[serde(crate = "near_sdk::serde")]
-pub struct TierMinPointConfigs {
+pub struct TierMinPointConfig {
     pub tier: Tier, 
     pub min_point: u64
 }
