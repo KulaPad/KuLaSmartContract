@@ -19,8 +19,7 @@ use crate::modules::account::*;
 use crate::utils::*;
 use crate::staking_contract::*;
 use crate::ft_contract::*;
-use crate::modules::tier::{StakingTier, TierConfigs, TierInfo, UserTierInfo};
-use crate::structures::tier::{StakingTier, TierInfo, TierInfoJson};
+use crate::modules::tier::{Tier, TierConfigs, TierMinPointConfig, TierInfo, UserTierInfo};
 
 mod modules;
 mod utils;
@@ -53,27 +52,27 @@ pub enum StorageKey {
     TierConfigsKey,
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Clone, Copy)]
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Clone)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Config {
     /// the config for each user Tier
-    pub tier_point: TierMinPointConfigs,
+    pub tier_point: Vec<TierMinPointConfig>,
 }
 
 impl Config {
-    pub fn get_default_tier_cfg() -> TierMinPointConfigs {
+    pub fn get_default_tier_cfg() -> TierMinPointConfig {
         let mut cfg = TierConfigs::new(StorageKey::TierConfigsKey);
-        cfg.insert(&StakingTier::Tier0, &TierInfo { ticket: 0, allocation: 0 });
-        cfg.insert(&StakingTier::Tier1, &TierInfo { ticket: 1, allocation: 0 });
-        cfg.insert(&StakingTier::Tier2, &TierInfo { ticket: 12, allocation: 0 });
-        cfg.insert(&StakingTier::Tier3, &TierInfo { ticket: 100, allocation: 0 });
-        cfg.insert(&StakingTier::Tier4, &TierInfo { ticket: 100, allocation: 1 });
+        cfg.insert(&Tier::Tier0, &TierInfo { ticket: 0, allocation: 0 });
+        cfg.insert(&Tier::Tier1, &TierInfo { ticket: 1, allocation: 0 });
+        cfg.insert(&Tier::Tier2, &TierInfo { ticket: 12, allocation: 0 });
+        cfg.insert(&Tier::Tier3, &TierInfo { ticket: 100, allocation: 0 });
+        cfg.insert(&Tier::Tier4, &TierInfo { ticket: 100, allocation: 1 });
         // cfg.extend(vec![
-        //     (StakingTier::Tier0, 0_u64),
-        //     (StakingTier::Tier1, 100_u64),
-        //     (StakingTier::Tier2, 1000_u64),
-        //     (StakingTier::Tier3, 5000_u64),
-        //     (StakingTier::Tier4, 10000_u64),
+        //     (Tier::Tier0, 0_u64),
+        //     (Tier::Tier1, 100_u64),
+        //     (Tier::Tier2, 1000_u64),
+        //     (Tier::Tier3, 5000_u64),
+        //     (Tier::Tier4, 10000_u64),
         // ].into_iter());
 
         return cfg;
@@ -120,7 +119,7 @@ pub struct IDOContract{
     pub projects_by_account: LookupMap<AccountId, ProjectIdUnorderedSet>,
 
     /// The information of tiers that helps to identify the number of tickets to allocation to a specific user when they joined to a project
-    //pub tiers: UnorderedMap<StakingTier, TierInfo>,
+    //pub tiers: UnorderedMap<Tier, TierInfo>,
 
     pub test_mode_enabled: bool,
 

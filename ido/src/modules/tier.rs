@@ -2,7 +2,8 @@ use crate::*;
 use near_sdk::collections::UnorderedMap;
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub enum StakingTier {
+#[serde(crate = "near_sdk::serde")]
+pub enum Tier {
     Tier0,
     Tier1,
     Tier2,
@@ -10,14 +11,19 @@ pub enum StakingTier {
     Tier4,
 }
 
-impl Default for StakingTier {
-    fn default() -> Self { StakingTier::Tier0 }
+impl Default for Tier {
+    fn default() -> Self { Tier::Tier0 }
 }
 
+pub type TierConfigs = UnorderedMap<Tier, TierInfo>;
 
 /// Map<Tier, min_point_to_achieve_this_tier>
-pub type TierConfigs = UnorderedMap<StakingTier, TierInfo>;
-
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize,Clone,Debug)]
+#[serde(crate = "near_sdk::serde")]
+pub struct TierMinPointConfig {
+    pub tier: Tier, 
+    pub min_point: u64
+}
 
 #[derive(BorshSerialize, BorshDeserialize)]
 pub struct TierInfo {
@@ -29,7 +35,7 @@ pub struct TierInfo {
 /// This is derivative data so plz do not store it in the storage
 pub struct UserTierInfo {
     // tier and point: Please see the staking tier on the staking contract
-    tier: StakingTier,
+    tier: Tier,
     point: Balance,
     ticket: u64,
     alloc: u64,
@@ -38,14 +44,14 @@ pub struct UserTierInfo {
 impl UserTierInfo {
     pub fn get_user_tier_info(account_id: AccountId, tier_configs: TierConfigs) -> UserTierInfo {
         // xKULA => tier => other info
-        let (user_tier, user_point) = (StakingTier::Tier0, U128(0)); // TODO: Get from staking contract get_user_staking_tier(account_id)
+        let (user_tier, user_point) = (Tier::Tier0, 0); // TODO: Get from staking contract get_user_staking_tier(account_id)
         // TODO: Get from staking contract get_user_staking_matched_tiers(user_point)
-        let user_staking_matched_tiers: Vec<(StakingTier, U64, U64)> = vec![
-            (StakingTier::Tier3, U64(5000), U64(5000)),
-            (StakingTier::Tier2, U64(1000), U64(4000)),
-            (StakingTier::Tier1, U64(100), U64(900)),
-            (StakingTier::Tier0, U64(0), U64(99)),
-        ];
+        let user_staking_matched_tiers: Vec<(Tier, U64, U64)> = vec![
+            (Tier::Tier3, U64(5000), U64(5000)),
+            (Tier::Tier2, U64(1000), U64(4000)),
+            (Tier::Tier1, U64(100), U64(900)),
+            (Tier::Tier0, U64(0), U64(99)),
+        ];  
 
         let mut ticket: u64 = 0;
         let mut alloc: u64 = 0;
@@ -66,7 +72,7 @@ impl UserTierInfo {
 
         UserTierInfo {
             tier: user_tier,
-            point: Balance(user_point),
+            point: user_point,
             ticket,
             alloc,
         }
