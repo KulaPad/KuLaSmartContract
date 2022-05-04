@@ -1,7 +1,7 @@
 use crate::*;
-use near_sdk::collections::UnorderedMap;
+pub use std::collections::HashMap;
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug, Clone, Eq, Hash, PartialOrd)]
 #[serde(crate = "near_sdk::serde")]
 pub enum Tier {
     Tier0,
@@ -16,10 +16,12 @@ impl Default for Tier {
 }
 
 /// Map<Tier, min_point_to_achieve_this_tier>
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize,Clone,Debug)]
-#[serde(crate = "near_sdk::serde")]
-pub struct TierMinPointConfig {
-    pub tier: Tier, 
-    pub min_point: u64
-}
+// #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize,Clone,Debug)]
+// #[serde(crate = "near_sdk::serde")]
+// pub struct TierMinPointConfigs {
+//     pub tier: Tier, 
+//     pub min_point: u64
+// }
+
+pub type TierMinPointConfigs =  HashMap<Tier, u64>;
 

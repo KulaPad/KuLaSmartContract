@@ -46,7 +46,7 @@ impl StakingContract {
             start_unstake_timestamp: account.unstake_start_timestamp,
             unstake_available_epoch: account.unstake_available_epoch_height,
             current_epoch: env::epoch_height(),
-            point: U128::from(0),
+            point: U64::from(0),
         })
     }
 
