@@ -36,7 +36,7 @@ pub struct Account {
     pub unstake_balance: Balance,
     pub unstake_start_timestamp: Timestamp,
     pub unstake_available_epoch_height: EpochHeight,
-    pub point: Balance,
+    pub point: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -52,5 +52,5 @@ pub struct AccountJson {
     pub start_unstake_timestamp: Timestamp,
     pub unstake_available_epoch: EpochHeight,
     pub current_epoch: EpochHeight,
-    pub point: U128,
+    pub point: U64,
 }
