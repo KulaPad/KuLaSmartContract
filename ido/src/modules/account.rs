@@ -1,7 +1,7 @@
 use crate::*;
 use crate::tests::test_project::*;
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug)]
 pub struct LotteryAccountSaleData {
     /// The number of eligible ticket. Ex: 10
     pub eligible_tickets: TicketNumber,
@@ -13,7 +13,7 @@ pub struct LotteryAccountSaleData {
     pub win_ticket_ids: Vec<TicketNumber>,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq)]
 pub enum AccountSaleData {
     Shared,
     Lottery(LotteryAccountSaleData),
@@ -31,7 +31,7 @@ pub struct AccountSale {
     pub sale_data: AccountSaleData,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq)]
 pub struct AccountSaleJson {
     pub committed_amount: U128,
     // This property is used for AccountSaleData::Lottery only.
@@ -39,7 +39,7 @@ pub struct AccountSaleJson {
 }
 
 impl AccountSaleJson {
-    fn from(account_sale: AccountSale) -> Self {
+    pub fn from(account_sale: AccountSale) -> Self {
         Self {
             committed_amount: U128::from(account_sale.committed_amount),
             lottery_sale_data: match account_sale.sale_data {
@@ -107,7 +107,7 @@ impl IDOContract {
         }
 
         // If the user account doesn't exist in the project that means the user has not registered yet.
-        let account = self.internal_get_account_by_project(&project_id, &account_id);
+        let account = self.internal_get_account_by_project(project_id, &account_id);
         if account.is_none() {
             return account_json;
         }

@@ -26,7 +26,7 @@ pub enum SaleType {
         max_allocation_per_user: Balance,
     },
     Lottery {
-        allocation_per_user: Balance,
+        allocation_per_ticket: Balance,
         total_tickets: TicketNumber,
         win_ticket_ids: Option<Vec<TicketNumber>>,
     }
@@ -204,16 +204,16 @@ impl IDOContract {
 
     // Accounts by Project
 
-    pub(crate) fn internal_get_accounts_by_project_or_panic(&self, project_id: &ProjectId) -> ProjectAccountUnorderedMap {
+    pub(crate) fn internal_get_accounts_by_project_or_panic(&self, project_id: ProjectId) -> ProjectAccountUnorderedMap {
         self.accounts_by_project.get(&project_id).expect("Project account tickets do not exist.")
     }
 
-    pub(crate) fn internal_get_account_by_project_or_panic(&self, project_id: &ProjectId, account_id: &AccountId) -> ProjectAccount {
-        self.internal_get_accounts_by_project_or_panic(&project_id).get(&account_id).expect("The account doesn't belong to the project.")
+    pub(crate) fn internal_get_account_by_project_or_panic(&self, project_id: ProjectId, account_id: &AccountId) -> ProjectAccount {
+        self.internal_get_accounts_by_project_or_panic(project_id).get(&account_id).expect("The account doesn't belong to the project.")
     }
 
-    pub(crate) fn internal_get_account_by_project(&self, project_id: &ProjectId, account_id: &AccountId) -> Option<ProjectAccount> {
-        self.internal_get_accounts_by_project_or_panic(&project_id).get(&account_id)
+    pub(crate) fn internal_get_account_by_project(&self, project_id: ProjectId, account_id: &AccountId) -> Option<ProjectAccount> {
+        self.internal_get_accounts_by_project_or_panic(project_id).get(&account_id)
     }
   
     // Projects by Account
@@ -262,7 +262,9 @@ impl IDOContract {
                 project.status = ProjectStatus::Whitelist;
             },
             ProjectStatus::Whitelist => {
-                assert!(project.whitelist_end_date < current_time, "Cannot change project's status to Sale.");
+                assert!(project.whitelist_end_date <= current_time,
+                        "{}", format!("The whitelist period (End: {} - Current: {}) is not end.",
+                        project.whitelist_end_date, current_time));
                 project.status = ProjectStatus::Sales;
             }
             ProjectStatus::Sales => {
@@ -279,12 +281,12 @@ impl IDOContract {
 
     // Project Json
 
-    pub(crate) fn internal_get_project(&self, project_id: &ProjectId, project: Option<Project>) -> Option<ProjectJson> {
+    pub(crate) fn internal_get_project(&self, project_id: ProjectId, project: Option<Project>) -> Option<ProjectJson> {
         if let Some(project) = project {
-            let whitelist_accounts = self.internal_get_accounts_by_project_or_panic(&project_id).len();
+            let whitelist_accounts = self.internal_get_accounts_by_project_or_panic(project_id).len();
 
             Some(ProjectJson {
-                id: *project_id,
+                id: project_id,
                 
                 whitelist_start_date: project.whitelist_start_date,
                 whitelist_end_date: project.whitelist_end_date,
@@ -352,17 +354,157 @@ impl IDOContract {
         self.accounts_by_project.insert(&project_id, &accounts_in_project);
     }
 
-    // Project Sale
-    pub(crate) fn internal_sale_commit(&mut self, project_id: ProjectId) {
-
-    }
-
     // Project Distribution
-
     pub(crate) fn internal_distribute_token_to_users(&mut self, project_id: ProjectId) {
         // Get project account token sales
         let project = self.internal_get_project_or_panic(project_id);
         
     }
 
+}
+
+#[near_bindgen]
+impl IDOContract{
+        // Project Sale
+        #[payable]
+        pub(crate) fn internal_sale_commit(&mut self, project_id: ProjectId) {
+        
+            let account_id = env::signer_account_id();
+            let project = self.internal_get_project_or_panic(project_id);                         
+            let deposit = env::attached_deposit();
+
+            project.assert_sale_period();
+            assert!(self.is_whitelist(project_id,None),"Account do not register whitelisting this project");
+              
+            match project.sale_type {
+                SaleType::Shared { 
+                    min_allocation_per_user, 
+                    max_allocation_per_user} => {
+                        self.internal_sale_commit_shared_project(min_allocation_per_user, 
+                                                                max_allocation_per_user,
+                                                                project_id,
+                                                                account_id,
+                                                                deposit);
+                    },
+                SaleType::Lottery { 
+                    allocation_per_ticket, 
+                    total_tickets: _, 
+                    win_ticket_ids: _ } => {
+                        self.internal_sale_commit_lottery_project(allocation_per_ticket,
+                                                                project_id,
+                                                                account_id,
+                                                                deposit);
+                    }
+            }
+        }
+
+        #[payable]
+        pub fn internal_sale_commit_shared_project(&mut self,
+            min_allocation: u128, 
+            max_allocation: u128,
+            project_id: ProjectId, 
+            account_id: AccountId, 
+            deposit: u128) {
+                // Update Project struct
+                let mut project_account_unordered_map = self.internal_get_accounts_by_project_or_panic(project_id);
+                let mut project_account = self.internal_get_account_by_project_or_panic(project_id,&account_id);
+                let mut project = self.internal_get_project_or_panic(project_id);
+                let account_sale = project_account.sale_data.unwrap_or(
+                    AccountSale{
+                        committed_amount: 0,
+                        sale_data: AccountSaleData::Shared
+                    }
+                );
+                
+                assert!( (account_sale.committed_amount + deposit) > min_allocation 
+                    && (account_sale.committed_amount + deposit) < max_allocation,
+                    "Total deposit amount must be between min_allocation and max_allocation");
+
+                let account_sale = AccountSale{
+                    committed_amount: account_sale.committed_amount + deposit,
+                    sale_data: AccountSaleData::Shared
+                };
+                
+                // Update Project account
+                project_account = ProjectAccount{
+                    sale_data: Some(account_sale),
+                    distribution_data: None
+                };
+
+                // Update Project total_fund_committed
+                project.total_fund_committed += deposit;
+
+                // Insert new value into accounts_by_project
+                project_account_unordered_map.insert(&account_id,&project_account);
+                self.accounts_by_project.insert(&project_id,&project_account_unordered_map);
+                self.projects.insert(&project_id, &project);
+                
+        }
+
+        #[payable]
+        pub fn internal_sale_commit_lottery_project(&mut self,
+            allocation_per_ticket: u128,
+            project_id: ProjectId, 
+            account_id: AccountId,
+            deposit: u128){
+                let mut project_account_unordered_map = self.internal_get_accounts_by_project_or_panic(project_id);
+                let mut project_account = self.internal_get_account_by_project_or_panic(project_id,&account_id);
+                let mut project = self.internal_get_project_or_panic(project_id);
+                let account_sale = project_account.sale_data.unwrap();
+                
+                match account_sale.sale_data{ 
+                    AccountSaleData::Lottery(
+                        LotteryAccountSaleData{
+                            eligible_tickets,
+                            deposit_tickets,
+                            ticket_ids,
+                            win_ticket_ids
+                        }) => {
+                            let tickets_num = (deposit / allocation_per_ticket) as u128;
+                            let mut ticket_ids = ticket_ids.clone();
+                            assert!(tickets_num>0, "Must deposit at least {} for exchange a ticket",allocation_per_ticket);
+                            assert!((tickets_num as u64 + deposit_tickets)<=eligible_tickets,"Eligible tickets not enough");
+
+                            if deposit > (tickets_num * allocation_per_ticket){
+                                //  Transfer back change deposit
+                                Promise::new(account_id.clone()).transfer(deposit - tickets_num * allocation_per_ticket);
+                            };
+
+                            let project_total_tickets = (project.total_fund_committed / allocation_per_ticket) as u64;
+                            for i in project_total_tickets..(project_total_tickets+ tickets_num as u64) {
+                                ticket_ids.push(i);
+                            }
+
+                            let lottery_account_sale_data = AccountSaleData::Lottery(
+                                LotteryAccountSaleData{
+                                    eligible_tickets: eligible_tickets,
+                                    deposit_tickets: (deposit_tickets + tickets_num as u64),
+                                    ticket_ids: ticket_ids,
+                                    win_ticket_ids: win_ticket_ids
+                                }  
+                            );
+
+                            let account_sale = AccountSale{
+                                committed_amount: account_sale.committed_amount + (tickets_num*allocation_per_ticket),
+                                sale_data: lottery_account_sale_data
+                            };
+                            
+                            // Update Project account
+                            project_account = ProjectAccount{
+                                sale_data: Some(account_sale),
+                                distribution_data: None
+                            };
+
+                            // Update Project total_fund_committed
+                            project.total_fund_committed += tickets_num*allocation_per_ticket;
+
+                            // Insert new value into accounts_by_project
+                            project_account_unordered_map.insert(&account_id,&project_account);
+                            self.accounts_by_project.insert(&project_id,&project_account_unordered_map);
+                            self.projects.insert(&project_id, &project);
+                        }
+                    
+                    _ => panic!("Invalid sale_data")
+                }
+        }
 }

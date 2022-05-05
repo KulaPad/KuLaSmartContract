@@ -11,14 +11,14 @@ impl IDOContract{
             sale_start_date: 1651604401000000000,
             sale_end_date: 1652068717000000000,
             token_contract_id: "contract.alevoro.near".to_string(),
-            token_raised_amount: U128(1000000000000000),
+            token_raised_amount: U128(1_000_000_000_000_000),
             token_sale_rate_numberator: 10u64,
             token_sale_rate_denominator: 1u64,
             fund_contract_id: "".to_string(),
             whitelist_type: WhitelistType::None,
             sale_type : SaleType::Shared{
-                min_allocation_per_user: 10,
-                max_allocation_per_user: 200
+                min_allocation_per_user: 10_000_000_000_000_000_000_000_000,
+                max_allocation_per_user: 200_000_000_000_000_000_000_000_000
             },
             distribution_type: DistributionType::Unlocked,
 
@@ -34,14 +34,15 @@ impl IDOContract{
             sale_start_date: 1651604401000000000,
             sale_end_date: 1652068717000000000,
             token_contract_id: "contract.ref_finance.near".to_string(),
-            token_raised_amount: U128(1000000000000000),
+            token_raised_amount: U128(1_000_000_000_000_000),
             token_sale_rate_numberator: 10u64,
             token_sale_rate_denominator: 1u64,
             fund_contract_id: "".to_string(),
             whitelist_type: WhitelistType::Ticket,
-            sale_type : SaleType::Shared{
-                min_allocation_per_user: 10,
-                max_allocation_per_user: 200
+            sale_type : SaleType::Lottery{
+                allocation_per_ticket: 10_000_000_000_000_000_000_000_000,
+                total_tickets: 20000,
+                win_ticket_ids: None
             },
             distribution_type: DistributionType::Unlocked,
 

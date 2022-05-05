@@ -1,4 +1,4 @@
-use near_sdk::{init, env, near_bindgen, ext_contract};
+use near_sdk::{env, near_bindgen, ext_contract};
 use near_sdk::{PanicOnDefault, Timestamp, Balance, AccountId, CryptoHash, Promise, PromiseOrValue, PromiseResult, EpochHeight};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
@@ -139,14 +139,14 @@ impl IDOContract{
         .filter(|(_, project)| match &status { None => true, Some(s) => &project.status == s })
         .skip(from_index.unwrap_or(0) as usize)
         .take(limit.unwrap_or(DEFAULT_PAGE_SIZE) as usize)
-        .map(|(project_id, project)| self.internal_get_project(&project_id, Some(project)).unwrap())
+        .map(|(project_id, project)| self.internal_get_project(project_id, Some(project)).unwrap())
         .collect()
     }
 
     pub fn get_project(&self, project_id: ProjectId) -> Option<ProjectJson> {
         let project = self.projects.get(&project_id);
 
-        self.internal_get_project(&project_id, project)
+        self.internal_get_project(project_id, project)
     }
 
     pub fn get_project_account_info(&self, project_id: ProjectId, account_id: Option<AccountId>) -> ProjectAccountJson {
@@ -178,11 +178,10 @@ impl IDOContract{
     }
 
     // Project Sale
-
     pub fn update_staking_tickets(&mut self, project_id: ProjectId) -> PromiseOrValue<bool> {
         let account_id = env::signer_account_id();
 
-        // Verify project & account before calling to staking smart contrct
+        // Verify project & account before calling to staking smart contract
         let project = self.projects.get(&project_id);
         if let Some(project) = project {
             project.assert_whitelist_period();
@@ -197,19 +196,23 @@ impl IDOContract{
 
     pub fn close_project_whitelist(&mut self, project_id: ProjectId) {
         println!("close_project_whitelist - inside");
-        // Get project
-        let mut project = self.internal_get_project_or_panic(project_id);
-        let current_time = get_current_time();
+        let project = self.internal_get_project_or_panic(project_id);
+        
+        assert!(project.status == ProjectStatus::Whitelist,
+                "{}", format!("The project's status ({:?}) is not correct",
+                project.status));
 
         println!("close_project_whitelist - get_current_time");
-        // Validate & update status to Sale -> 
-        assert!(project.status == ProjectStatus::Whitelist && project.whitelist_end_date <= current_time, "{}", format!("The project's status ({:?}) is not correct or the whitelist period (End: {} - Current: {}) is not end.", project.status, project.whitelist_end_date, current_time));
-        
+        self.internal_change_project_status(project_id);
+
         // TODO
 
         println!("close_project_whitelist - end of for");
 
-        project.status = ProjectStatus::Sales;
-        self.projects.insert(&project_id, &project);
+    }
+
+    #[payable]
+    pub fn commit(&mut self, project_id: ProjectId){
+        self.internal_sale_commit(project_id);
     }
 }

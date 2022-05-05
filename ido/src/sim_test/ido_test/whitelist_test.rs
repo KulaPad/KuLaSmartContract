@@ -41,7 +41,7 @@ pub fn init_ido_whitelist() -> (UserAccount,UserAccount,UserAccount,UserAccount,
 
 #[test]
 pub fn test_join_whitelist(){
-    let (root,alice,ido,ft_contract,staking_contract,ido_contract) = init();
+    let (root,alice,ido,ft_contract,staking_contract,ido_contract) = init_ido_whitelist();
     
     let is_whitelisted : bool = root.view(
         ido_contract.account_id(),
@@ -78,7 +78,7 @@ pub fn test_join_whitelist(){
 
 #[test]
 pub fn test_resolve_get_account_point_for_register_whitelist(){
-    let (root,alice,ido,ft_contract,staking_contract,ido_contract) = init();
+    let (root,alice,ido,ft_contract,staking_contract,ido_contract) = init_ido_whitelist();
 
     // Storage deposit
     alice.call(
