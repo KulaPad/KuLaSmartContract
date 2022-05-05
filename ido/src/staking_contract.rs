@@ -12,7 +12,8 @@ pub struct AccountJson {
     pub can_withdraw: bool,
     pub start_unstake_timestamp: Timestamp,
     pub unstake_available_epoch: EpochHeight,
-    pub current_epoch: EpochHeight
+    pub current_epoch: EpochHeight,
+    pub point: U64,
 }
 
 #[ext_contract(ext_staking_contract)]
