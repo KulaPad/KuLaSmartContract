@@ -3,9 +3,9 @@ use near_sdk_sim::{init_simulator, UserAccount, DEFAULT_GAS, STORAGE_AMOUNT, to_
 use near_sdk_sim::transaction::ExecutionStatus;
 use staking_contract::AccountJson;
 
-use near_sdk_sim::lazy_static_include::lazy_static_include_bytes! {
+near_sdk_sim::lazy_static_include::lazy_static_include_bytes! {
     FT_CONTRACT_WASM_FILE => "token-test/vbi-ft.wasm",
-    STAKING_CONTRACT_WASM_FILE => "out/staking-contract.wasm"
+    STAKING_CONTRACT_WASM_FILE => "res/staking-contract.wasm"
 }
 
 const FT_CONTRACT_ID: &str = "ft_contract";
