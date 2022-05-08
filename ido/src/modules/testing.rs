@@ -3,25 +3,24 @@ use crate::*;
 #[near_bindgen]
 impl IDOContract{
 
-    fn internal_new_project_1()-> Project{
-        panic!("The function has not been implemented yet.");
-    }
 
     pub fn create_sample_projects(&mut self) {
         self.assert_test_mode_and_owner();
-
+        
         self.create_project(Self::internal_new_project_1());
+        self.create_project(Self::internal_new_project_2());
+        self.create_project(Self::internal_new_project_3());
+        self.create_project(Self::internal_new_project_4());
     }
 
-    pub fn create_sample_project(&mut self, project_no: u8, status: Option<ProjectStatus>) {
+    pub fn create_sample_project(&mut self, project_no: u8) {
         self.assert_test_mode_and_owner();
 
-        let mut project: Project = match project_no {
+        let project: ProjectInput = match project_no {
             1 => Self::internal_new_project_1(),
             _ => panic!("No project no: {}", project_no)
         };
 
-        project.status = status.unwrap_or(ProjectStatus::Preparation);
         self.create_project(project);
     }
 

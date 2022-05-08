@@ -103,7 +103,8 @@ impl VMContextBuilder {
                 input: vec![],
                 epoch_height: 0,
                 block_index: 0,
-                block_timestamp: 0,
+                // Current time: 29/4/2022 - 9h33'
+                block_timestamp: 1651199572000000000,
                 account_balance: 0,
                 account_locked_balance: 0,
                 storage_usage: 10u64.pow(6),

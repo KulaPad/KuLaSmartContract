@@ -62,16 +62,4 @@ impl IDOContract{
         self.assert_owner();
     }
 
-    pub fn internal_get_projects_by_account_or_default(&self,account_id: &AccountId)
-        -> UnorderedSet<ProjectId> {
-            self.projects_by_account
-                .get(&account_id)
-                .unwrap_or_else(|| {
-                    UnorderedSet::new(
-                        get_storage_key(StorageKey::ProjectsByAccountInnerKey{
-                            account_id_hash: hash_account_id(&account_id)
-                        })
-                    )
-                })
-    }
 }

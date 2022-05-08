@@ -1,5 +1,5 @@
 [package]
-name = "KuLaPad_token"
+name = "kulapad_token"
 version = "0.1.0"
 authors = ["Duy Thien <duythien0912@gmail.com>"]
 edition = "2018"

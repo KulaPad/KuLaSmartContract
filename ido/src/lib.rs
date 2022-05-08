@@ -16,6 +16,7 @@ pub type ProjectIdUnorderedSet = UnorderedSet<ProjectId>;
 
 use crate::modules::project::*;
 use crate::modules::account::*;
+use crate::modules::xtoken::*;
 use crate::utils::*;
 use crate::staking_contract::*;
 use crate::ft_contract::*;
@@ -32,6 +33,7 @@ pub const TOKEN_DECIMAL: u8 = 8;
 
 pub const GAS_FUNCTION_CALL: u64 = 5_000_000_000_000;
 pub const GAS_FUNCTION_CALL_UPDATE_STAKING_TIER: u64 = 50_000_000_000_000;
+pub const GAS_FUNCTION_CALL_GET_USER_POINT: u64 = 50_000_000_000_000;
 pub const NO_DEPOSIT: u128 = 0;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -171,8 +173,8 @@ impl IDOContract {
 
     // Project call functions
 
-    pub fn create_project(&mut self, project: Project) -> ProjectId{
-        self.internal_create_project(project)
+    pub fn create_project(&mut self, project: ProjectInput) -> ProjectId{
+        self.internal_create_project(Project::from(project))
     }
 
     pub fn change_project_status(&mut self, project_id: ProjectId) {
@@ -187,14 +189,18 @@ impl IDOContract {
         .filter(|(_, project)| match &status { None => true, Some(s) => &project.status == s })
         .skip(from_index.unwrap_or(0) as usize)
         .take(limit.unwrap_or(DEFAULT_PAGE_SIZE) as usize)
-        .map(|(project_id, project)| self.internal_get_project(project_id.clone(), Some(project)).unwrap())
+        .map(|(project_id, project)| self.internal_get_project(&project_id, Some(project)).unwrap())
         .collect()
     }
 
     pub fn get_project(&self, project_id: ProjectId) -> Option<ProjectJson> {
         let project = self.projects.get(&project_id);
 
-        self.internal_get_project(project_id, project)
+        self.internal_get_project(&project_id, project)
+    }
+
+    pub fn get_project_account_info(&self, project_id: ProjectId, account_id: Option<AccountId>) -> ProjectAccountJson {
+        self.internal_get_project_account_info(project_id, account_id.unwrap_or(env::signer_account_id()))
     }
 
     // Project Whitelist

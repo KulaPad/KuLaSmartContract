@@ -1,5 +1,7 @@
 pub mod test_utils;
 pub mod test_emulator;
+pub mod project_internal;
+
 #[cfg(test)]
 pub mod test_account;
 pub mod test_project;
