@@ -34,6 +34,7 @@ impl StakingContract {
         let upgradable_account: UpgradableAccount = self.accounts.get(&account_id).unwrap();
         let account: Account = Account::from(upgradable_account);
         let new_reward = self.internal_calculate_account_reward(&account);
+        let (tier, point) = self.internal_get_user_tier(&account_id);
 
         Some(AccountJson {
             account_id: account_id,
@@ -46,7 +47,8 @@ impl StakingContract {
             start_unstake_timestamp: account.unstake_start_timestamp,
             unstake_available_epoch: account.unstake_available_epoch_height,
             current_epoch: env::epoch_height(),
-            point: U64::from(0),
+            tier,
+            point: U64(point),
         })
     }
 

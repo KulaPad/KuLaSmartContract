@@ -1,19 +1,25 @@
-mod modules;
-mod util;
-mod internal;
 mod core_impl;
 mod enumeration;
+mod internal;
+mod modules;
+mod util;
 
-use near_sdk::collections::{UnorderedSet,LookupMap};
-use near_sdk::{near_bindgen, AccountId, env, PanicOnDefault, Balance, EpochHeight, BlockHeight, BorshStorageKey, Promise, PromiseResult, PromiseOrValue, ext_contract};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize,};
-use near_sdk::serde::{Deserialize, Serialize};
+use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::collections::{LookupMap};
 use near_sdk::json_types::{U128, U64};
+use near_sdk::serde::{Deserialize, Serialize};
+use near_sdk::{
+    env, ext_contract, near_bindgen, AccountId, Balance, BlockHeight, BorshStorageKey, EpochHeight,
+    PanicOnDefault, Promise, PromiseOrValue, PromiseResult,
+};
+use std::collections::HashMap;
 
-pub use crate::modules::account::{Account, AccountJson, UpgradableAccount};
-use crate::modules::tier::{TierMinPointConfigs, Tier};
 pub use crate::enumeration::PoolInfo;
+pub use crate::modules::account::{Account, AccountJson, UpgradableAccount};
+use crate::modules::tier::{Tier, TierConfig};
 use crate::util::*;
+
+pub type TierConfigsType = HashMap<Tier, TierConfig>;
 
 pub const NO_DEPOSIT: Balance = 0;
 pub const DEPOSIT_ONE_YOCTOR: Balance = 1;
@@ -24,66 +30,61 @@ pub const NUM_EPOCHS_TO_UNLOCK: EpochHeight = 1;
 pub struct Config {
     // Percent reward per 1 block
     pub reward_numerator: u64,
-    /// What is?
     pub reward_denumerator: u64,
     pub total_apr: u64,
 
-    /// the config for each user Tier
-    pub tier_point_configs: TierMinPointConfigs,
+    // The config for each user Tier
+    pub tier_configs: TierConfigsType,
 }
 
 impl Config {
     fn new_default_config() -> Self {
         // By default APR 15%
         Self {
-            reward_numerator: 715, reward_denumerator: 100000000000, total_apr: 15,
-            tier_point_configs: Config::get_default_tier_min_point_cfg(),
+            reward_numerator: 715,
+            reward_denumerator: 100000000000,
+            total_apr: 15,
+            tier_configs: Config::get_default_tier_configs(),
         }
     }
 
-    fn new(reward_numerator: u64, reward_denumerator: u64, total_apr: u64, tier_point_configs: TierMinPointConfigs) -> Self {
+    fn new(
+        reward_numerator: u64,
+        reward_denumerator: u64,
+        total_apr: u64,
+        tier_configs: TierConfigsType,
+    ) -> Self {
         Self {
-            reward_numerator, 
-            reward_denumerator, 
+            reward_numerator,
+            reward_denumerator,
             total_apr,
-            tier_point_configs,
+            tier_configs,
         }
     }
 
-    pub fn get_default_tier_min_point_cfg() -> TierMinPointConfigs {
-         let mut cfg = TierMinPointConfigs::new();
-        cfg.insert(Tier::Tier0, 0);
-        cfg.insert(Tier::Tier1, 100);
-        cfg.insert(Tier::Tier2, 1_000);
-        cfg.insert(Tier::Tier3, 5_000);
-        cfg.insert(Tier::Tier4, 10_000);
+    pub fn get_default_tier_configs() -> TierConfigsType {
+        let mut cfg = TierConfigsType::new();
 
-        return cfg;
-    }
+        cfg.insert(Tier::Tier0, TierConfig::new(0));
+        cfg.insert(Tier::Tier1, TierConfig::new(100));
+        cfg.insert(Tier::Tier2, TierConfig::new(1_000));
+        cfg.insert(Tier::Tier3, TierConfig::new(5_000));
+        cfg.insert(Tier::Tier4, TierConfig::new(10_000));
 
-    pub fn set_tier_min_point_cfg(&mut self, tier: Tier, min_point: u64) {
-        self.tier_point_configs.insert(tier, min_point);
-    }
-
-    pub fn reset_tier_min_point_cfg(&mut self) {
-        self.tier_point_configs =  TierMinPointConfigs::new();
+        cfg
     }
 }
 
 impl Default for Config {
     fn default() -> Self {
-        // By default APR 15%
-        Self {
-            reward_numerator: 715, reward_denumerator: 100000000000, total_apr: 15,
-            tier_point_configs: Config::get_default_tier_min_point_cfg(),
-        }
+        Self::new_default_config()
     }
 }
 
 #[derive(BorshDeserialize, BorshSerialize, BorshStorageKey)]
 pub enum StorageKey {
     AccountKey,
-    PointConfigKey,
+    TierConfigKey,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -91,20 +92,19 @@ pub enum StorageKey {
 pub struct StakingContract {
     pub owner_id: AccountId, // Owner of contract
     pub ft_contract_id: AccountId,
-    pub config: Config, // Config reward and apr for contract
+    pub config: Config,               // Config reward and apr for contract
     pub total_stake_balance: Balance, // Total token balance lock in contract
     pub total_paid_reward_balance: Balance,
     pub total_staker: Balance, // TODO: integer
-    pub pre_reward: Balance, // Pre reward before change total balance
+    pub pre_reward: Balance,   // Pre reward before change total balance
     pub last_block_balance_change: BlockHeight,
     pub accounts: LookupMap<AccountId, UpgradableAccount>, // List staking user
-    pub paused: bool, // Pause staking pool with limit reward,
-    pub paused_in_block: BlockHeight
+    pub paused: bool,                                      // Pause staking pool with limit reward,
+    pub paused_in_block: BlockHeight,
 }
 
 #[near_bindgen]
 impl StakingContract {
-
     #[init]
     pub fn new_default_config(owner_id: AccountId, ft_contract_id: AccountId) -> Self {
         Self::new(owner_id, ft_contract_id, Config::default())
@@ -123,12 +123,16 @@ impl StakingContract {
             last_block_balance_change: env::block_index(),
             accounts: LookupMap::new(StorageKey::AccountKey),
             paused: false,
-            paused_in_block: 0
+            paused_in_block: 0,
         }
     }
 
     pub fn get_total_pending_reward(&self) -> U128 {
-        assert_eq!(self.owner_id, env::predecessor_account_id(), "ERR_ONLY_OWNER_CONTRACT");
+        assert_eq!(
+            self.owner_id,
+            env::predecessor_account_id(),
+            "ERR_ONLY_OWNER_CONTRACT"
+        );
         U128(self.pre_reward + self.internal_calculate_global_reward())
     }
 
@@ -164,7 +168,11 @@ impl StakingContract {
     }
 
     pub(crate) fn assert_owner(&self) {
-        assert_eq!(env::predecessor_account_id(), self.owner_id, "Only owner contract can be access");
+        assert_eq!(
+            env::predecessor_account_id(),
+            self.owner_id,
+            "Only owner contract can be access"
+        );
     }
 
     #[init(ignore_state)]
@@ -175,91 +183,25 @@ impl StakingContract {
     }
 
     /// create or update tier min point config
-    pub fn set_tier_point(&mut self, tier: Tier, min_point: U64) {
-        self.config.set_tier_min_point_cfg(tier, min_point.0);
-    }
-
-    /// Get user point(xKula) amount by account id
-    pub fn get_user_point(&self, account_id: AccountId) -> u64 {
-        let account: Option<UpgradableAccount> = self.accounts.get(&account_id);
-        if account.is_some() {
-            let acc: Account = Account::from(account.unwrap());
-            acc.point
-        } else {
-            0
-        }
-    }
-
-    /// Get user staking tier and point by account id
-    pub fn get_user_tier(&self, account_id: AccountId) -> (Tier, u64) {
-        let point = self.get_user_point(account_id);
-        let mut user_tier = Tier::Tier0;
-        let mut current_tier_point: u64 = 0;
-        let configs = self.config.tier_point_configs.clone();
-        for cfg in configs {
-            if point >= cfg.1 && current_tier_point <= cfg.1 {
-                user_tier = cfg.0;
-                current_tier_point = cfg.1;
-            } else {
-                break
-            }
-        }
-
-        (user_tier, point)
-    }
-
-    /// Get user staking tier trimming down:
-    /// Use for calculating Ticket & Allocation
-    /// Eg: 9.999 point =
-    ///     5.000 + 4.000 + 999
-    ///     1 x T3 = 100
-    ///     4 x T2 = 48
-    ///     9 x T1 = 9
-    ///     100 + 48 + 9 = 157
-    ///
-    /// return Vec<(Tier, min_tier_point, total_valid_point_at_this_tier)>
-    pub fn get_matched_tiers(&self, mut point: u64) -> Vec<(Tier, u64, u64)> {
-        let mut tiers: Vec<(Tier, u64, u64)> = vec![];
-        let configs = self.config.tier_point_configs.clone();
-        for cfg in configs {
-            if cfg.1 <= 0 {
-                // tier0
-                let tier_point = point;
-                tiers.push((cfg.0.clone(), cfg.1, tier_point));
-
-                point = 0;
-            } else {
-                let mut point_mut = point;
-                // has this tier
-                if point_mut >= cfg.1 {
-                    let tier_point = cfg.1 * (point_mut / cfg.1); // NOTE: u64 division so we don't need to floor
-                    tiers.push((cfg.0.clone() ,cfg.1, tier_point));
-
-                    point_mut -= tier_point;
-
-                    point = point_mut;
-                }
-            }
-        }
-        tiers
+    pub fn set_tier_config(&mut self, tier: Tier, config: TierConfig) {
+        self.config.tier_configs.insert(tier, config);
     }
 }
-
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
     use near_sdk::json_types::ValidAccountId;
-    use near_sdk::test_utils::{VMContextBuilder, accounts};
+    use near_sdk::test_utils::{accounts, VMContextBuilder};
     use near_sdk::{testing_env, MockedBlockchain};
 
     fn get_context(is_view: bool) -> VMContextBuilder {
         let mut builder = VMContextBuilder::new();
-        builder.
-        current_account_id(accounts(0))
-        .signer_account_id(accounts(0))
-        .predecessor_account_id(accounts(0))
-        .is_view(is_view);
+        builder
+            .current_account_id(accounts(0))
+            .signer_account_id(accounts(0))
+            .predecessor_account_id(accounts(0))
+            .is_view(is_view);
 
         builder
     }
@@ -269,11 +211,25 @@ mod tests {
         let context = get_context(false);
         testing_env!(context.build());
 
-        let contract: StakingContract = StakingContract::new_default_config(accounts(1).to_string(), "ft_contract".to_string());
+        let contract: StakingContract =
+            StakingContract::new_default_config(accounts(1).to_string(), "ft_contract".to_string());
 
-        assert_eq!(contract.owner_id, accounts(1).to_string(), "Contract owner should be equal {}", accounts(1).to_string());
-        assert_eq!(contract.ft_contract_id, "ft_contract".to_string(), "FT contract id should be init data");
-        assert_eq!(contract.config.reward_numerator, Config::default().reward_numerator, "Config must be equal default");
+        assert_eq!(
+            contract.owner_id,
+            accounts(1).to_string(),
+            "Contract owner should be equal {}",
+            accounts(1).to_string()
+        );
+        assert_eq!(
+            contract.ft_contract_id,
+            "ft_contract".to_string(),
+            "FT contract id should be init data"
+        );
+        assert_eq!(
+            contract.config.reward_numerator,
+            Config::default().reward_numerator,
+            "Config must be equal default"
+        );
         assert_eq!(contract.paused, false);
     }
 
@@ -282,16 +238,32 @@ mod tests {
         let context = get_context(false);
         testing_env!(context.build());
 
-        let contract: StakingContract = StakingContract::new(accounts(1).to_string(), "ft_contract".to_string(), Config {
-            reward_numerator: 1500,
-            reward_denumerator: 10000000,
-            total_apr: 15,
-            tier_point_configs: Config::get_default_tier_min_point_cfg(),
-        });
+        let contract: StakingContract = StakingContract::new(
+            accounts(1).to_string(),
+            "ft_contract".to_string(),
+            Config {
+                reward_numerator: 1500,
+                reward_denumerator: 10000000,
+                total_apr: 15,
+                tier_configs: Config::get_default_tier_configs(),
+            },
+        );
 
-        assert_eq!(contract.owner_id, accounts(1).to_string(), "Contract owner should be equal {}", accounts(1).to_string());
-        assert_eq!(contract.ft_contract_id, "ft_contract".to_string(), "FT contract id should be init data");
-        assert_eq!(contract.config.reward_numerator, 1500, "Config must be equal default");
+        assert_eq!(
+            contract.owner_id,
+            accounts(1).to_string(),
+            "Contract owner should be equal {}",
+            accounts(1).to_string()
+        );
+        assert_eq!(
+            contract.ft_contract_id,
+            "ft_contract".to_string(),
+            "FT contract id should be init data"
+        );
+        assert_eq!(
+            contract.config.reward_numerator, 1500,
+            "Config must be equal default"
+        );
         assert_eq!(contract.config.reward_denumerator, 10000000);
         assert_eq!(contract.paused, false);
     }
@@ -302,9 +274,9 @@ mod tests {
         context.block_index(0);
         testing_env!(context.build());
 
-        let mut contract: StakingContract = StakingContract::new_default_config(accounts(1).to_string(), accounts(1).to_string());
+        let mut contract: StakingContract =
+            StakingContract::new_default_config(accounts(1).to_string(), accounts(1).to_string());
         contract.internal_create_account(env::predecessor_account_id());
-
 
         // Deposit and stake function call from FT contract
         context.predecessor_account_id(accounts(1));
@@ -330,13 +302,11 @@ mod tests {
         assert_eq!(contract.pre_reward, 0);
         assert_eq!(contract.last_block_balance_change, 0);
 
-
         // Test update stake balance of account
         // Deposit and stake function call from FT contract
         context.predecessor_account_id(accounts(1));
         testing_env!(context.build());
         contract.internal_deposit_and_stake(accounts(0).to_string(), 20_000_000_000_000);
-
 
         context.block_index(20);
         context.predecessor_account_id(accounts(0));
@@ -365,9 +335,9 @@ mod tests {
         context.block_index(0);
         testing_env!(context.build());
 
-        let mut contract: StakingContract = StakingContract::new_default_config(accounts(1).to_string(), accounts(1).to_string());
+        let mut contract: StakingContract =
+            StakingContract::new_default_config(accounts(1).to_string(), accounts(1).to_string());
         contract.internal_create_account(env::predecessor_account_id());
-
 
         // Deposit and stake function call from FT contract
         context.predecessor_account_id(accounts(1));
@@ -392,27 +362,14 @@ mod tests {
     }
 
     #[test]
-    fn withdraw_test() {
-
-    }
+    fn withdraw_test() {}
 
     #[test]
-    fn update_tier_point_cfg_test() {
-
-    }
+    fn update_tier_point_cfg_test() {}
 
     #[test]
-    fn get_user_point_test() {
-
-    }
+    fn get_user_point_test() {}
 
     #[test]
-    fn get_user_tier_test() {
-
-    }
-
-    #[test]
-    fn get_user_staking_matched_tiers_test() {
-
-    }
+    fn get_user_tier_test() {}
 }

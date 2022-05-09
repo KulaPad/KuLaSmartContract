@@ -52,5 +52,6 @@ pub struct AccountJson {
     pub start_unstake_timestamp: Timestamp,
     pub unstake_available_epoch: EpochHeight,
     pub current_epoch: EpochHeight,
+    pub tier: Tier,
     pub point: U64,
 }
