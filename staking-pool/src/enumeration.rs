@@ -34,21 +34,21 @@ impl StakingContract {
         let upgradable_account: UpgradableAccount = self.accounts.get(&account_id).unwrap();
         let account: Account = Account::from(upgradable_account);
         let new_reward = self.internal_calculate_account_reward(&account);
-        let (tier, point) = self.internal_get_user_tier(&account_id);
+        let tier = self.internal_get_tier(account.point);
 
         Some(AccountJson {
             account_id: account_id,
-            lock_balance: U128(account.lock_balance),
-            unlock_timestamp: account.unlock_timestamp,
-            stake_balance: U128(account.stake_balance),
-            unstake_balance: U128(account.unstake_balance),
+            locked_balance: U128(account.locked_balance),
+            unlocked_timestamp: account.get_unlocked_timestamp(),
+            staked_balance: U128(account.staked_balance),
+            unstaked_balance: U128(account.unstaked_balance),
             reward: U128(account.pre_reward + new_reward),
             can_withdraw: account.unstake_available_epoch_height <= env::epoch_height(),
             start_unstake_timestamp: account.unstake_start_timestamp,
             unstake_available_epoch: account.unstake_available_epoch_height,
             current_epoch: env::epoch_height(),
             tier,
-            point: U64(point),
+            point: U128(account.point),
         })
     }
 

@@ -4,16 +4,16 @@ use crate::*;
 #[serde(crate = "near_sdk::serde")]
 pub struct AccountJson {
     pub account_id: AccountId,
-    pub lock_balance: U128,
-    pub unlock_timestamp: Timestamp,
-    pub stake_balance: U128,
-    pub unstake_balance: U128,
+    pub locked_balance: U128,
+    pub unlocked_timestamp: Timestamp,
+    pub staked_balance: U128,
+    pub unstaked_balance: U128,
     pub reward: U128,
     pub can_withdraw: bool,
     pub start_unstake_timestamp: Timestamp,
     pub unstake_available_epoch: EpochHeight,
     pub current_epoch: EpochHeight,
-    pub point: U64,
+    pub point: U128,
 }
 
 #[ext_contract(ext_staking_contract)]

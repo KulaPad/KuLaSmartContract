@@ -71,7 +71,6 @@ pub fn init() -> (UserAccount, UserAccount, UserAccount, UserAccount) {
     (root, ft_contract, staking_contract, alice)
 }
 
-
 #[test]
 fn init_contract_test() {
     let (root, ft_contract, staking_contract, alice) = init();
@@ -145,9 +144,9 @@ fn deposit_and_stake_test() {
     ).unwrap_json();
 
     assert_eq!(account_json.account_id, alice.account_id());
-    assert_eq!(account_json.stake_balance, U128(10000000000000000000000000000));
+    assert_eq!(account_json.staked_balance, U128(10000000000000000000000000000));
     assert!(account_json.reward.0 > 0);
-    assert_eq!(account_json.unstake_balance.0, 0);
+    assert_eq!(account_json.unstaked_balance.0, 0);
 }
 
 #[test]

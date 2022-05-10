@@ -16,7 +16,7 @@ near call dev-1646718348240-77300820554298 storage_balance_of '{"account_id": "h
 
 near call token-kulapad.testnet storage_deposit --accountId dev-1646718348240-77300820554298 --deposit 0.0125
 
-near deploy --accountId dev-1646718348240-77300820554298 --wasmFile res/staking-contract.wasm
+near deploy --accountId dev-1646718348240-77300820554298 --wasmFile res/kulapad-staking.wasm
 
 near call token-kulapad.testnet ft_transfer_call '{"receiver_id": "dev-1646718348240-77300820554298", "amount": "1000000000", "msg": "2222221231232"}' --accountId hoangtheanh.testnet --depositYocto 1 --gas 50000000000000
 

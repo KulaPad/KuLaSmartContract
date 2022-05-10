@@ -42,9 +42,9 @@ impl FungibleTokenReceiver for StakingContract {
         if args.len() >= 1 {
             match args[0] {
                 "lock" => {
-                    let locked_time: u64 = args[1].trim().parse().unwrap();
-                    self.internal_lock(sender_id.clone(), amount.0, locked_time);
-                    env::log(format!("Lock amount of {} KULA for account {} in {}.", amount.0, sender_id, locked_time).as_bytes());
+                    let locked_days: DayType = args[1].trim().parse().unwrap();
+                    self.internal_lock(sender_id.clone(), amount.0, locked_days);
+                    env::log(format!("Lock amount of {} KULA for account {} in {} day(s).", amount.0, sender_id, locked_days).as_bytes());
                 },
                 _ => {}
             }
@@ -65,11 +65,11 @@ impl StakingContract {
 
         self.internal_unstake(account_id, amount.0);
     }
-    /// locked_time = 8460000000000000 nanoseconds
-    pub fn lock(&mut self, amount: U128, locked_time: u64) {
+    
+    pub fn lock(&mut self, amount: U128, locked_days: DayType) {
         let account_id: AccountId = env::predecessor_account_id();
 
-        self.internal_lock(account_id, amount.0, locked_time);
+        self.internal_lock(account_id, amount.0, locked_days);
     }
 
     pub fn unlock(&mut self) {
@@ -87,7 +87,7 @@ impl StakingContract {
         // handle transfer withdraw
         ext_ft_contract::ft_transfer(
             account_id.clone(), 
-            U128(old_account.unstake_balance), 
+            U128(old_account.unstaked_balance), 
             Some(String::from("Staking contract withdraw")), 
             &self.ft_contract_id, 
             DEPOSIT_ONE_YOCTOR, 
@@ -161,7 +161,7 @@ impl StakingContract {
         match env::promise_result(0) {
             PromiseResult::NotReady => unreachable!(),
             PromiseResult::Successful(_value) => {
-                U128(old_account.unstake_balance)
+                U128(old_account.unstaked_balance)
             },
             PromiseResult::Failed => {
                 // Handle rollback data

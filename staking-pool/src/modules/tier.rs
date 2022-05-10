@@ -1,6 +1,6 @@
 use crate::*;
 
-pub type PointType = u64;
+pub type TierConfigsType = HashMap<Tier, TierConfig>;
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug, Clone, Eq, Hash, PartialOrd, Copy)]
 #[serde(crate = "near_sdk::serde")]
@@ -21,41 +21,44 @@ impl Default for Tier {
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, Copy)]
 #[serde(crate = "near_sdk::serde")]
 pub struct TierConfig {
-    pub min_point: PointType,
+    pub min_point: Balance,
 }
 
 impl TierConfig {
-    pub fn new(min_point: PointType) -> Self {
+    pub fn new(min_point: Balance) -> Self {
         Self { min_point }
+    }
+
+    pub fn get_default_tier_configs() -> TierConfigsType {
+        TierConfig::get_default_tier_configs_multiple(DEFAULT_TOKEN_DECIMAL)
+    }
+
+    pub fn get_default_tier_configs_multiple(digits: u8) -> TierConfigsType{
+        let mut cfg = TierConfigsType::new();
+        let digits: u128 = digits as u128;
+
+        cfg.insert(Tier::Tier0, TierConfig::new(0));
+        cfg.insert(Tier::Tier1, TierConfig::new(100 * digits));
+        cfg.insert(Tier::Tier2, TierConfig::new(1_000 * digits));
+        cfg.insert(Tier::Tier3, TierConfig::new(5_000 * digits));
+        cfg.insert(Tier::Tier4, TierConfig::new(10_000 * digits));
+
+        cfg
     }
 }
 
 impl StakingContract {
-    /// Get user point(xKula) amount by account id
-    pub(crate) fn internal_get_user_point(&self, account_id: &AccountId) -> PointType {
-        let account: Option<UpgradableAccount> = self.accounts.get(account_id);
-        if account.is_some() {
-            let acc: Account = Account::from(account.unwrap());
-            acc.point
-        } else {
-            0
-        }
-    }
-
-    /// Get user tier and point by account id
-    pub(crate) fn internal_get_user_tier(&self, account_id: &AccountId) -> (Tier, PointType) {
-        let point = self.internal_get_user_point(account_id);
+    pub(crate) fn internal_get_tier(&self, point: Balance) -> Tier {
         let mut configs = self.config.tier_configs.iter().map(|a| (*a.0, *a.1)).collect::<Vec<(Tier, TierConfig)>>();
         // Sort the list descending by min point
         configs.sort_by(|a, b| b.1.min_point.cmp(&a.1.min_point));
-        let len = configs.len();
 
         for (tier, config) in configs {
             if point >= config.min_point {
-                return (tier, point);
+                return tier;
             }
         }
         
-        (Tier::Tier0, point)
+        Tier::Tier0
     }
 }

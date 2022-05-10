@@ -17,7 +17,7 @@ impl Emulator {
 
         testing_env!(context.clone());
 
-        let contract = IDOContract::new(owner, ft_token_id(), None, None);
+        let contract = IDOContract::new(owner, ft_token_id(), None, None, None);
 
         Emulator {
             contract,

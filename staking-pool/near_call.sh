@@ -15,7 +15,7 @@ near call staking-kulapad.testnet storage_balance_of '{"account_id": "'$MY_ACCOU
 
 near call token-kulapad.testnet storage_deposit --accountId staking-kulapad.testnet --deposit 0.0125
 
-near deploy --accountId staking-kulapad.testnet --wasmFile res/staking-contract.wasm
+near deploy --accountId staking-kulapad.testnet --wasmFile res/kulapad-staking.wasm
 
 near call token-kulapad.testnet ft_transfer_call '{"receiver_id": "staking-kulapad.testnet", "amount": "1000000000", "msg": "Stake KULA"}' --accountId $MY_ACCOUNT --depositYocto 1 --gas 50000000000000
 

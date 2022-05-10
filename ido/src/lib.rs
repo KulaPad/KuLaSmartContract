@@ -5,6 +5,7 @@ use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::collections::{UnorderedMap, UnorderedSet, LookupMap};
 use near_sdk::env::signer_account_id;
 use near_sdk::json_types::{U128, U64};
+use std::collections::HashMap;
 
 pub type ProjectId = u64;
 pub type AllocationNumber = u32;
@@ -20,7 +21,7 @@ use crate::modules::xtoken::*;
 use crate::utils::*;
 use crate::staking_contract::*;
 use crate::ft_contract::*;
-use crate::modules::tier::{Tier, TierConfigs, TierMinPointConfig, TierInfo, UserTierInfo};
+use crate::modules::tier::{Tier, TierConfig, TierConfigsType, UserTierJson};
 
 mod modules;
 mod utils;
@@ -58,38 +59,28 @@ pub enum StorageKey {
 #[serde(crate = "near_sdk::serde")]
 pub struct Config {
     /// the config for each user Tier
-    pub tier_point: Vec<TierMinPointConfig>,
+    pub tier_configs: TierConfigsType,
 }
 
 impl Config {
-    pub fn get_default_tier_cfg() -> TierMinPointConfig {
-        let mut cfg = TierConfigs::new(StorageKey::TierConfigsKey);
-        cfg.insert(&Tier::Tier0, &TierInfo { ticket: 0, allocation: 0 });
-        cfg.insert(&Tier::Tier1, &TierInfo { ticket: 1, allocation: 0 });
-        cfg.insert(&Tier::Tier2, &TierInfo { ticket: 12, allocation: 0 });
-        cfg.insert(&Tier::Tier3, &TierInfo { ticket: 100, allocation: 0 });
-        cfg.insert(&Tier::Tier4, &TierInfo { ticket: 100, allocation: 1 });
-        // cfg.extend(vec![
-        //     (Tier::Tier0, 0_u64),
-        //     (Tier::Tier1, 100_u64),
-        //     (Tier::Tier2, 1000_u64),
-        //     (Tier::Tier3, 5000_u64),
-        //     (Tier::Tier4, 10000_u64),
-        // ].into_iter());
-
-        return cfg;
+    fn new_default_config() -> Self {
+        Self {
+            tier_configs: TierConfig::get_default_tier_configs(),
+        }
     }
 
-    pub fn set_tier_cfg(&mut self, tier: Tier, tier_info: TierInfo) {
-        self.tier_point.insert(&tier, &tier_info);
+    fn new(
+        tier_configs: TierConfigsType,
+    ) -> Self {
+        Self {
+            tier_configs,
+        }
     }
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self {
-            tier_point: Config::get_default_tier_cfg(),
-        }
+        Self::new_default_config()
     }
 }
 
@@ -132,11 +123,11 @@ pub struct IDOContract{
 impl IDOContract {
     #[init]
     pub fn new_with_default_config(owner_id: AccountId, staking_contract_id: AccountId, funding_ft_token_ids: Option<Vec<AccountId>>, test_mode_enabled: Option<bool>) -> Self {
-        Self::new(owner_id, staking_contract_id, funding_ft_token_ids, test_mode_enabled, Config::default())
+        Self::new(owner_id, staking_contract_id, funding_ft_token_ids, test_mode_enabled, None)
     }
 
     #[init]
-    pub fn new(owner_id: AccountId, staking_contract_id: AccountId, funding_ft_token_ids: Option<Vec<AccountId>>, test_mode_enabled: Option<bool>, config: Config) -> Self {
+    pub fn new(owner_id: AccountId, staking_contract_id: AccountId, funding_ft_token_ids: Option<Vec<AccountId>>, test_mode_enabled: Option<bool>, config: Option<Config>) -> Self {
         env::log(format!("Creating contract...").as_bytes());
         let mut contract = Self {
             owner_id,
@@ -147,7 +138,7 @@ impl IDOContract {
             tickets_by_project: LookupMap::new(get_storage_key(StorageKey::TicketsByProjectKey)),
             projects_by_account: LookupMap::new(get_storage_key(StorageKey::ProjectsByAccountKey)),
             test_mode_enabled: test_mode_enabled.unwrap_or(true),
-            config,
+            config: config.unwrap_or(Config::default()),
         };
 
         if let Some(funding_ft_token_ids) = funding_ft_token_ids {
@@ -263,9 +254,9 @@ impl IDOContract {
         self.projects.insert(&project_id, &project);
     }
 
-    /// get UserTierInfo: tier, point, ticket, alloc
-    pub fn get_user_tier_info(&self) -> UserTierInfo {
+    /// get UserTierJson: tier, point, ticket, alloc
+    pub fn get_user_tier_info(&self) -> UserTierJson {
         let user: AccountId = env::predecessor_account_id();
-        UserTierInfo::get_user_tier_info(user, self.config.tier_point)
+        UserTierJson::default()
     }
 }
