@@ -92,6 +92,7 @@ fn test_happy_case() {
     let locked_amount: u128 = 200_00000000;
     let locked_days: u16 = 10;
     let locked_timestamp: Timestamp = increase_timestamp(&whitelist_start_date, locked_days, 0, 0, 0);
+    let expected_staking_tier = StakingTier::Tier1;
     let expected_staking_tickets: TicketNumber = 1;
     let expected_allocations: TicketNumber = 0;
 

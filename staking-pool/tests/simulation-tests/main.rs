@@ -4,8 +4,8 @@ use near_sdk_sim::transaction::ExecutionStatus;
 use staking_contract::AccountJson;
 
 near_sdk_sim::lazy_static_include::lazy_static_include_bytes! {
-    FT_CONTRACT_WASM_FILE => "token-test/vbi-ft.wasm",
-    STAKING_CONTRACT_WASM_FILE => "out/staking-contract.wasm"
+    FT_CONTRACT_WASM_FILE => "res/kulapad_token.wasm",
+    STAKING_CONTRACT_WASM_FILE => "res/kulapad_staking.wasm"
 }
 
 const FT_CONTRACT_ID: &str = "ft_contract";
@@ -70,7 +70,6 @@ pub fn init() -> (UserAccount, UserAccount, UserAccount, UserAccount) {
 
     (root, ft_contract, staking_contract, alice)
 }
-
 
 #[test]
 fn init_contract_test() {
@@ -145,9 +144,9 @@ fn deposit_and_stake_test() {
     ).unwrap_json();
 
     assert_eq!(account_json.account_id, alice.account_id());
-    assert_eq!(account_json.stake_balance, U128(10000000000000000000000000000));
+    assert_eq!(account_json.staked_balance, U128(10000000000000000000000000000));
     assert!(account_json.reward.0 > 0);
-    assert_eq!(account_json.unstake_balance.0, 0);
+    assert_eq!(account_json.unstaked_balance.0, 0);
 }
 
 #[test]

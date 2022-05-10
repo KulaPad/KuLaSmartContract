@@ -41,9 +41,9 @@ pub fn test_deposit_and_stake(){
     ).unwrap_json();
 
     assert_eq!(account_json.account_id, alice.account_id());
-    assert_eq!(account_json.stake_balance, U128(10_000_000_000_000_000_000_000_000_000));
+    assert_eq!(account_json.staked_balance, U128(10_000_000_000_000_000_000_000_000_000));
     assert!(account_json.reward.0 > 0);
-    assert_eq!(account_json.unstake_balance.0, 0);
+    assert_eq!(account_json.unstaked_balance.0, 0);
 }
 
 

@@ -3,7 +3,9 @@ use near_sdk::{PanicOnDefault, Timestamp, Balance, AccountId, CryptoHash, Promis
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::collections::{UnorderedMap, UnorderedSet, LookupMap};
+use near_sdk::env::signer_account_id;
 use near_sdk::json_types::{U128, U64};
+use std::collections::HashMap;
 
 pub type ProjectId = u64;
 pub type AllocationNumber = u32;
@@ -19,6 +21,7 @@ use crate::modules::xtoken::*;
 use crate::utils::*;
 use crate::staking_contract::*;
 use crate::ft_contract::*;
+use crate::modules::tier::{Tier, TierConfig, TierConfigsType, UserTierJson};
 
 mod modules;
 mod utils;
@@ -43,12 +46,42 @@ pub enum StorageKey {
     TicketsByProjectKey,
     TicketsByProjectInnerKey(ProjectId),
     ProjectsByAccountKey,
-    ProjectsByAccountInnerKey { 
+    ProjectsByAccountInnerKey {
         account_id_hash: CryptoHash
     },
     TierKey,
     TierTicketInnerKey (String),
     TierAllocationInnerKey (String),
+    TierConfigsKey,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct Config {
+    /// the config for each user Tier
+    pub tier_configs: TierConfigsType,
+}
+
+impl Config {
+    fn new_default_config() -> Self {
+        Self {
+            tier_configs: TierConfig::get_default_tier_configs(),
+        }
+    }
+
+    fn new(
+        tier_configs: TierConfigsType,
+    ) -> Self {
+        Self {
+            tier_configs,
+        }
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self::new_default_config()
+    }
 }
 
 #[near_bindgen]
@@ -60,7 +93,7 @@ pub struct IDOContract{
     /// The account id of staking contract. It used for cross-contract call
     pub staking_contract_id: AccountId,
 
-    /// The list of token id that allows to buy an IDO project. 
+    /// The list of token id that allows to buy an IDO project.
     pub funding_ft_token_ids: UnorderedSet<AccountId>,
 
     /// Stores the list of projects that belongs to this IDO contract.
@@ -74,20 +107,27 @@ pub struct IDOContract{
     /// Ex: Project 1: Tickets [{Id: L1, Account Id: account1.testnet }, {Id: S2, Account Id: account2.testnet }, ...]
     /// The user tickets were stored here during re-calculate
     pub tickets_by_project: LookupMap<ProjectId, TicketAndAccountLookupMap>,
-    
+
     /// The list of projects that that account has registered whitelist.
     pub projects_by_account: LookupMap<AccountId, ProjectIdUnorderedSet>,
 
     /// The information of tiers that helps to identify the number of tickets to allocation to a specific user when they joined to a project
-    //pub tiers: UnorderedMap<StakingTier, TierInfo>,
+    //pub tiers: UnorderedMap<Tier, TierInfo>,
 
     pub test_mode_enabled: bool,
+
+    pub config: Config,
 }
 
 #[near_bindgen]
-impl IDOContract{
+impl IDOContract {
     #[init]
-    pub fn new(owner_id: AccountId, staking_contract_id: AccountId, funding_ft_token_ids: Option<Vec<AccountId>>, test_mode_enabled: Option<bool>) -> Self {
+    pub fn new_with_default_config(owner_id: AccountId, staking_contract_id: AccountId, funding_ft_token_ids: Option<Vec<AccountId>>, test_mode_enabled: Option<bool>) -> Self {
+        Self::new(owner_id, staking_contract_id, funding_ft_token_ids, test_mode_enabled, None)
+    }
+
+    #[init]
+    pub fn new(owner_id: AccountId, staking_contract_id: AccountId, funding_ft_token_ids: Option<Vec<AccountId>>, test_mode_enabled: Option<bool>, config: Option<Config>) -> Self {
         env::log(format!("Creating contract...").as_bytes());
         let mut contract = Self {
             owner_id,
@@ -98,6 +138,7 @@ impl IDOContract{
             tickets_by_project: LookupMap::new(get_storage_key(StorageKey::TicketsByProjectKey)),
             projects_by_account: LookupMap::new(get_storage_key(StorageKey::ProjectsByAccountKey)),
             test_mode_enabled: test_mode_enabled.unwrap_or(true),
+            config: config.unwrap_or(Config::default()),
         };
 
         if let Some(funding_ft_token_ids) = funding_ft_token_ids {
@@ -130,7 +171,7 @@ impl IDOContract{
     pub fn change_project_status(&mut self, project_id: ProjectId) {
         self.internal_change_project_status(project_id);
     }
-    
+
     // Project view functions
 
     pub fn get_projects(&self, status: Option<ProjectStatus>, from_index: Option<u64>, limit: Option<u64>) -> Vec<ProjectJson>{
@@ -152,7 +193,7 @@ impl IDOContract{
     pub fn get_project_account_info(&self, project_id: ProjectId, account_id: Option<AccountId>) -> ProjectAccountJson {
         self.internal_get_project_account_info(project_id, account_id.unwrap_or(env::signer_account_id()))
     }
-    
+
     // Project Whitelist
 
     /// Register an account for a project's whitelist
@@ -173,7 +214,7 @@ impl IDOContract{
                 return true;
             }
         }
-        
+
         false
     }
 
@@ -190,7 +231,7 @@ impl IDOContract{
             // Start processing
             return self.internal_update_staking_tickets(project_id, account_id);
         }
-        
+
         panic_project_not_exist();
         PromiseOrValue::Value(false)
     }
@@ -202,14 +243,20 @@ impl IDOContract{
         let current_time = get_current_time();
 
         println!("close_project_whitelist - get_current_time");
-        // Validate & update status to Sale -> 
+        // Validate & update status to Sale ->
         assert!(project.status == ProjectStatus::Whitelist && project.whitelist_end_date <= current_time, "{}", format!("The project's status ({:?}) is not correct or the whitelist period (End: {} - Current: {}) is not end.", project.status, project.whitelist_end_date, current_time));
-        
+
         // TODO
 
         println!("close_project_whitelist - end of for");
 
         project.status = ProjectStatus::Sales;
         self.projects.insert(&project_id, &project);
+    }
+
+    /// get UserTierJson: tier, point, ticket, alloc
+    pub fn get_user_tier_info(&self) -> UserTierJson {
+        let user: AccountId = env::predecessor_account_id();
+        UserTierJson::default()
     }
 }

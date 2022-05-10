@@ -2,5 +2,9 @@
 set -e
 
 RUSTFLAGS='-C link-arg=-s' cargo build --target wasm32-unknown-unknown --release
-mkdir -p res
-cp target/wasm32-unknown-unknown/release/*.wasm res/staking-contract.wasm
+
+cp target/wasm32-unknown-unknown/release/*.wasm ../res/kulapad_staking.wasm
+
+cp target/wasm32-unknown-unknown/release/*.wasm res/kulapad_staking.wasm
+
+read -p "Press any key to continue..."

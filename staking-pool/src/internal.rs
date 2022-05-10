@@ -19,7 +19,7 @@ impl StakingContract {
         let upgradable_account: UpgradableAccount = self.accounts.get(&account_id).unwrap();
         let mut account = Account::from(upgradable_account);
 
-        if account.stake_balance == 0 {
+        if account.staked_balance == 0 {
             self.total_staker += 1;
         }
 
@@ -27,9 +27,9 @@ impl StakingContract {
         let new_reward: Balance = self.internal_calculate_account_reward(&account);
 
         // update account data
-        account.pre_stake_balance = account.stake_balance;
+        account.pre_stake_balance = account.staked_balance;
         account.pre_reward += new_reward;
-        account.stake_balance += amount;
+        account.staked_balance += amount;
         account.last_block_balance_change = env::block_index();
         self.accounts.insert(&account_id, &UpgradableAccount::from(account));
 
@@ -43,22 +43,22 @@ impl StakingContract {
     }
 
     /// User lock token
-    /// locked_time = 8460000000000000 nanoseconds
-    pub(crate) fn internal_lock(&mut self, account_id: AccountId, amount: Balance, locked_time: u64) {
+    pub(crate) fn internal_lock(&mut self, account_id: AccountId, amount: Balance, locked_days: DayType) {
 
         // Check account exists
         let upgradable_account: UpgradableAccount = self.accounts.get(&account_id).unwrap();
         let mut account = Account::from(upgradable_account);
+        let current_block_timestamp = env::block_timestamp();
 
-        assert!(amount <= account.stake_balance - account.lock_balance, "ERR_AMOUNT_MUST_LESS_THAN_BALANCE");
+        // Calculate xPoint
+        account.calculate_point(
+            amount, 
+            locked_days, 
+            self.config.min_locking_days, 
+            self.config.max_locking_days, 
+            current_block_timestamp
+        );
 
-        // update account data
-        account.lock_balance += amount;
-        if account.unlock_timestamp < env::block_timestamp() {
-            account.unlock_timestamp = env::block_timestamp() + locked_time;
-        } else {
-            account.unlock_timestamp += locked_time;
-        }
         self.accounts.insert(&account_id, &UpgradableAccount::from(account));
     }
 
@@ -69,10 +69,16 @@ impl StakingContract {
         let upgradable_account: UpgradableAccount = self.accounts.get(&account_id).unwrap();
         let mut account = Account::from(upgradable_account);
 
-        assert!(account.unlock_timestamp <= env::block_timestamp(), "ERR_UNLOCK_TIMESTAMP_UNAVAILABLE");
+        if env::signer_account_id() != self.owner_id {
+            assert!(account.get_unlocked_timestamp() <= env::block_timestamp(), "ERR_UNLOCK_TIMESTAMP_UNAVAILABLE");
+        }
 
         // update account data
-        account.lock_balance = 0;
+        account.locked_balance = 0;
+        account.locked_timestamp = 0;
+        account.locked_days = 0;
+        account.point = 0;
+
         self.accounts.insert(&account_id, &UpgradableAccount::from(account));
     }
 
@@ -81,21 +87,21 @@ impl StakingContract {
 
         let mut account = Account::from(upgradable_account);
 
-        assert!(amount <= account.stake_balance - account.lock_balance, "ERR_AMOUNT_MUST_LESS_THAN_BALANCE");
+        assert!(amount <= account.staked_balance - account.locked_balance, "ERR_AMOUNT_MUST_LESS_THAN_BALANCE");
 
         // if exist account, update balance and update pre data
         let new_reward: Balance = self.internal_calculate_account_reward(&account);
 
         // update account data
-        account.pre_stake_balance = account.stake_balance;
+        account.pre_stake_balance = account.staked_balance;
         account.pre_reward += new_reward;
-        account.stake_balance -= amount;
+        account.staked_balance -= amount;
         account.last_block_balance_change = env::block_index();
         account.unstake_available_epoch_height = env::epoch_height() + NUM_EPOCHS_TO_UNLOCK;
-        account.unstake_balance += amount;
+        account.unstaked_balance += amount;
         account.unstake_start_timestamp = env::block_timestamp();
-        
-        if account.stake_balance == 0 {
+
+        if account.staked_balance == 0 {
             self.total_staker -= 1;
         }
 
@@ -113,20 +119,21 @@ impl StakingContract {
         let upgradable_account: UpgradableAccount = self.accounts.get(&account_id).unwrap();
         let account: Account = Account::from(upgradable_account);
 
-        assert!(account.unstake_balance > 0, "ERR_UNSTAKE_BALANCE_IS_ZERO");
+        assert!(account.unstaked_balance > 0, "ERR_UNSTAKE_BALANCE_IS_ZERO");
         assert!(account.unstake_available_epoch_height <= env::epoch_height(), "ERR_DISABLE_WITHDRAW");
 
         let new_account: Account = Account {
-            lock_balance: account.lock_balance,
-            unlock_timestamp: account.unlock_timestamp,
+            locked_balance: account.locked_balance,
+            locked_timestamp: account.locked_timestamp,
+            locked_days: account.locked_days,
             pre_reward: account.pre_reward,
-            stake_balance: account.stake_balance,
+            staked_balance: account.staked_balance,
             pre_stake_balance: account.pre_stake_balance,
             last_block_balance_change: account.last_block_balance_change,
-            unstake_balance: 0,
+            unstaked_balance: 0,
             unstake_start_timestamp: 0,
             unstake_available_epoch_height: 0,
-            point: 0
+            point: account.point,
         };
 
         self.accounts.insert(&account_id, &UpgradableAccount::from(new_account));
@@ -141,7 +148,7 @@ impl StakingContract {
             env::block_index()
         };
         let diff_block = lasted_block - account.last_block_balance_change;
-        let reward: Balance = (account.stake_balance * self.config.reward_numerator as u128 * diff_block as u128) / (self.config.reward_denumerator as u128);
+        let reward: Balance = (account.staked_balance * self.config.reward_numerator as u128 * diff_block as u128) / (self.config.reward_denumerator as u128);
         reward
     }
 
@@ -158,13 +165,14 @@ impl StakingContract {
 
     pub(crate) fn internal_create_account(&mut self, account: AccountId) {
         let new_account = Account {
-            lock_balance: 0,
-            unlock_timestamp: 0,
-            stake_balance: 0,
+            locked_balance: 0,
+            locked_timestamp: 0,
+            locked_days: 0,
+            staked_balance: 0,
             pre_stake_balance: 0,
             pre_reward: 0,
             last_block_balance_change: env::block_index(),
-            unstake_balance: 0,
+            unstaked_balance: 0,
             unstake_available_epoch_height: 0,
             unstake_start_timestamp: 0,
             point: 0,
