@@ -44,6 +44,7 @@ pub struct Account {
 pub struct AccountJson {
     pub account_id: AccountId,
     pub locked_balance: U128,
+    pub locked_days: DayType,
     pub unlocked_timestamp: Timestamp,
     pub staked_balance: U128,
     pub unstaked_balance: U128,
@@ -70,7 +71,9 @@ impl Account {
             return 0;
         }
 
-        ((self.get_unlocked_timestamp() - current_timestamp) % ONE_DAY_IN_NANOSECOND + 1) as DayType
+        let remaining_nanoseconds = self.get_unlocked_timestamp() - current_timestamp;
+
+        (remaining_nanoseconds / ONE_DAY_IN_NANOSECOND) as DayType
     }
 
     pub fn calculate_point(
@@ -203,6 +206,38 @@ mod tests {
     }
 
     #[test]
+    fn test_get_remaining_locked_days() {
+        // Current timestamp: 1652151705_000_000_000 - 2022-05-10 3:01:45 (GMT)
+        let current_block_timestamp: Timestamp = 1652151705_000_000_000;
+
+        // Staked: 100, locked: 100, locked days: 36, locked timestamp: 16 days ago (remaining: 20 days), point: 10
+        let current_staked_amount = get_balance_with_decimal(200);
+        let current_locked_amount = get_balance_with_decimal(100);
+        let current_locked_days = 36;
+        let current_locked_timestamp = current_block_timestamp - ONE_DAY_IN_NANOSECOND * 16;
+        let current_point = get_balance_with_decimal(10);
+
+        let account = get_account(
+            current_staked_amount,
+            current_locked_amount,
+            current_locked_days,
+            current_locked_timestamp,
+            current_point,
+        );
+
+        println!(
+            "{:?}, unlocked_timestamp: {}, current_timestamp: {}",
+            account,
+            account.get_unlocked_timestamp(),
+            current_block_timestamp
+        );
+        assert_eq!(
+            20,
+            account.get_remaining_locked_days(current_block_timestamp)
+        );
+    }
+
+    #[test]
     #[should_panic(expected = "ERR_AMOUNT_MUST_GREATER_THAN_ZERO")]
     fn test_account_calculate_point_error_1() {
         let mut account = get_account(0, 0, 0, 0, 0);
@@ -240,9 +275,15 @@ mod tests {
         );
 
         // Asserts locked_balance, locked_days, locked_timestamp, point
-        assert_eq!(expected_locked_amount, account.locked_balance, "locked_amount");
+        assert_eq!(
+            expected_locked_amount, account.locked_balance,
+            "locked_amount"
+        );
         assert_eq!(expected_locked_days, account.locked_days, "locked_days");
-        assert_eq!(expected_locked_timestamp, account.locked_timestamp, "locked_timestamp");
+        assert_eq!(
+            expected_locked_timestamp, account.locked_timestamp,
+            "locked_timestamp"
+        );
         assert_eq!(expected_point, account.point, "point");
     }
 

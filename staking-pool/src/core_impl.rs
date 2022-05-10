@@ -34,6 +34,9 @@ impl FungibleTokenReceiver for StakingContract {
         assert!(!self.paused, "ERR_CONTRACT_PAUSED");
         assert_eq!(self.ft_contract_id, env::predecessor_account_id(), "ERR_NOT_VALID_FT_CONTRACT");
 
+        env::log(format!("ft_on_transfer(sender_id: {}, amount: {}, msg: {})", sender_id, amount.0, msg).as_bytes());
+        println!("ft_on_transfer(sender_id: {}, amount: {}, msg: {})", sender_id, amount.0, msg);
+
         // Staking
         self.internal_deposit_and_stake(sender_id.clone(), amount.0);
 

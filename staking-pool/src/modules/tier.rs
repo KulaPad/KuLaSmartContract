@@ -35,13 +35,13 @@ impl TierConfig {
 
     pub fn get_default_tier_configs_multiple(digits: u8) -> TierConfigsType{
         let mut cfg = TierConfigsType::new();
-        let digits: u128 = digits as u128;
+        let multiple = u128::pow(10, digits as u32);
 
         cfg.insert(Tier::Tier0, TierConfig::new(0));
-        cfg.insert(Tier::Tier1, TierConfig::new(100 * digits));
-        cfg.insert(Tier::Tier2, TierConfig::new(1_000 * digits));
-        cfg.insert(Tier::Tier3, TierConfig::new(5_000 * digits));
-        cfg.insert(Tier::Tier4, TierConfig::new(10_000 * digits));
+        cfg.insert(Tier::Tier1, TierConfig::new(100 * multiple));
+        cfg.insert(Tier::Tier2, TierConfig::new(1_000 * multiple));
+        cfg.insert(Tier::Tier3, TierConfig::new(5_000 * multiple));
+        cfg.insert(Tier::Tier4, TierConfig::new(10_000 * multiple));
 
         cfg
     }

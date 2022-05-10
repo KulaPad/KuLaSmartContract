@@ -39,6 +39,7 @@ impl StakingContract {
         Some(AccountJson {
             account_id: account_id,
             locked_balance: U128(account.locked_balance),
+            locked_days: account.locked_days,
             unlocked_timestamp: account.get_unlocked_timestamp(),
             staked_balance: U128(account.staked_balance),
             unstaked_balance: U128(account.unstaked_balance),

@@ -24,7 +24,7 @@ pub type DayType = u32;
 pub const NO_DEPOSIT: Balance = 0;
 pub const DEPOSIT_ONE_YOCTOR: Balance = 1;
 pub const NUM_EPOCHS_TO_UNLOCK: EpochHeight = 1;
-pub const ONE_DAY_IN_NANOSECOND: u64 = 8460000000000000;
+pub const ONE_DAY_IN_NANOSECOND: u64 = 84600_000_000_000;
 pub const POINT_100_PERCENT_IN_NANOSECOND: u64 = ONE_DAY_IN_NANOSECOND * 360;
 pub const DEFAULT_TOKEN_DECIMAL: u8 = 8;
 
@@ -83,7 +83,6 @@ impl Default for Config {
 #[derive(BorshDeserialize, BorshSerialize, BorshStorageKey)]
 pub enum StorageKey {
     AccountKey,
-    TierConfigKey,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -170,17 +169,17 @@ impl StakingContract {
         );
     }
 
-    #[init(ignore_state)]
-    #[private]
-    pub fn migrate() -> Self {
-        let contract: StakingContract = env::state_read().expect("ERR_READ_CONTRACT_STATE");
-        contract
-    }
+    // Owner
 
     /// create or update tier min point config
     pub fn set_tier_config(&mut self, tier: Tier, config: TierConfig) {
         self.assert_owner();
         self.config.tier_configs.insert(tier, config);
+    }
+
+    pub fn reset_lock(&mut self, account_id: AccountId) {
+        self.assert_owner();
+        self.internal_unlock(account_id);
     }
 }
 

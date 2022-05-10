@@ -69,7 +69,9 @@ impl StakingContract {
         let upgradable_account: UpgradableAccount = self.accounts.get(&account_id).unwrap();
         let mut account = Account::from(upgradable_account);
 
-        assert!(account.get_unlocked_timestamp() <= env::block_timestamp(), "ERR_UNLOCK_TIMESTAMP_UNAVAILABLE");
+        if env::signer_account_id() != self.owner_id {
+            assert!(account.get_unlocked_timestamp() <= env::block_timestamp(), "ERR_UNLOCK_TIMESTAMP_UNAVAILABLE");
+        }
 
         // update account data
         account.locked_balance = 0;
