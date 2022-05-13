@@ -24,7 +24,7 @@ impl IDOContract{
         self.create_project(project);
     }
 
-    pub fn update_project_whitelist_date(&mut self, project_id: ProjectId, new_whitelist_start_date: Option<Timestamp>, new_whitelist_end_date: Option<Timestamp>) {
+    pub fn update_project_whitelist_date(&mut self, project_id: ProjectId, new_whitelist_start_date: Option<U64>, new_whitelist_end_date: Option<U64>) {
         self.assert_test_mode_and_owner();
 
         let mut project = self.projects.get(&project_id).expect("No project found");
@@ -34,8 +34,8 @@ impl IDOContract{
 
         println!("update_project_whitelist_date: current_time: {}, a_half_of_period: {}", current_time, a_half_of_whitelist_period);
 
-        project.whitelist_start_date = new_whitelist_start_date.unwrap_or(current_time - a_half_of_whitelist_period);
-        project.whitelist_end_date = new_whitelist_end_date.unwrap_or(current_time + a_half_of_whitelist_period);
+        project.whitelist_start_date = new_whitelist_start_date.unwrap_or(U64(current_time - a_half_of_whitelist_period)).0;
+        project.whitelist_end_date = new_whitelist_end_date.unwrap_or(U64(current_time + a_half_of_whitelist_period)).0;
 
         self.projects.insert(&project_id, &project);
 

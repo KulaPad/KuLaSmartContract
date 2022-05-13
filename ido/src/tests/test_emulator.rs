@@ -60,4 +60,28 @@ impl Emulator {
 
         testing_env!(self.context.clone());
     }
+
+    pub fn update_account_sale_ticket(&mut self, account_id: AccountId, project_id: ProjectId, ticket_nums: u64){
+        self.contract.assert_test_mode_and_owner();
+        let mut project_account_unordered_map = self.contract.internal_get_accounts_by_project_or_panic(project_id);
+        let account_sale = AccountSale{
+            committed_amount: 0,
+            sale_data: AccountSaleData::Lottery(
+                LotteryAccountSaleData{
+                    eligible_tickets: ticket_nums,
+                    deposit_tickets: 0,
+                    ticket_ids: vec![],
+                    win_ticket_ids: vec![]
+                }
+            )
+        };
+
+        let project_account = ProjectAccount{
+            sale_data: Some(account_sale),
+            distribution_data: None
+        };
+
+        project_account_unordered_map.insert(&account_id, &project_account);
+        self.contract.accounts_by_project.insert(&project_id,&project_account_unordered_map);   
+    }
 }

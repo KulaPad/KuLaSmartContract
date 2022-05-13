@@ -61,5 +61,16 @@ impl IDOContract{
         self.assert_test_mode();
         self.assert_owner();
     }
+}
 
+#[near_bindgen]
+impl IDOContract {
+    pub fn get_current_block_timestamp(&self) -> U64{
+        U64(env::block_timestamp())
+    }
+
+    pub fn do_something(&self) {
+        let a : u64 = 10000000000;
+        assert_eq!(a * 1000, 10000000000000);
+    }
 }

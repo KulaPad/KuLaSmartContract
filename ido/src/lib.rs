@@ -10,23 +10,22 @@ use std::collections::HashMap;
 pub type ProjectId = u64;
 pub type AllocationNumber = u32;
 pub type TicketNumber = u64;
-pub type TicketId = String;
+pub type TicketId = u64;
 pub type ProjectAccountUnorderedMap = UnorderedMap<AccountId, ProjectAccount>;
 pub type TicketAndAccountLookupMap = LookupMap<TicketId, AccountId>;
 pub type ProjectIdUnorderedSet = UnorderedSet<ProjectId>;
 
 use crate::modules::project::*;
 use crate::modules::account::*;
-use crate::modules::xtoken::*;
 use crate::utils::*;
 use crate::staking_contract::*;
 use crate::ft_contract::*;
 use crate::modules::tier::{Tier, TierConfig, TierConfigsType, UserTierJson};
 
-mod modules;
+pub mod modules;
 mod utils;
 mod tests;
-mod staking_contract;
+pub mod staking_contract;
 mod ft_contract;
 
 pub const DEFAULT_PAGE_SIZE: u64 = 100;
@@ -180,18 +179,18 @@ impl IDOContract {
         .filter(|(_, project)| match &status { None => true, Some(s) => &project.status == s })
         .skip(from_index.unwrap_or(0) as usize)
         .take(limit.unwrap_or(DEFAULT_PAGE_SIZE) as usize)
-        .map(|(project_id, project)| self.internal_get_project(&project_id, Some(project)).unwrap())
+        .map(|(project_id, project)| self.internal_get_project(project_id, Some(project)).unwrap())
         .collect()
     }
 
     pub fn get_project(&self, project_id: ProjectId) -> Option<ProjectJson> {
         let project = self.projects.get(&project_id);
 
-        self.internal_get_project(&project_id, project)
+        self.internal_get_project(project_id, project)
     }
 
-    pub fn get_project_account_info(&self, project_id: ProjectId, account_id: Option<AccountId>) -> ProjectAccountJson {
-        self.internal_get_project_account_info(project_id, account_id.unwrap_or(env::signer_account_id()))
+    pub fn get_project_account_info(&self, project_id: ProjectId, account_id: AccountId) -> ProjectAccountJson {
+        self.internal_get_project_account_info(project_id, account_id)
     }
 
     // Project Whitelist
@@ -199,14 +198,14 @@ impl IDOContract {
     /// Register an account for a project's whitelist
     /// User can only register the whitelist on the whitelist period of the project
     pub fn register_whitelist(&mut self, project_id: ProjectId) {
-        self.internal_register_whitelist(project_id);
+        let account_id = env::signer_account_id();
+        self.internal_register_whitelist(account_id,project_id);
     }
 
     /// Check an account wherever registered for a project or not
-    pub fn is_whitelist(&self, project_id: ProjectId, account_id: Option<AccountId>) -> bool {
+    pub fn is_whitelist(&self, project_id: ProjectId, account_id: AccountId) -> bool {
         self.assert_project_exist(project_id);
 
-        let account_id = account_id.unwrap_or(env::signer_account_id());
         let projects_in_account = self.projects_by_account.get(&account_id);
 
         if let Some(projects_in_account) = projects_in_account {
@@ -252,6 +251,51 @@ impl IDOContract {
 
         project.status = ProjectStatus::Sales;
         self.projects.insert(&project_id, &project);
+    }
+
+    
+    pub fn commit(&mut self,account_id:AccountId, project_id: ProjectId, fund_contract_id: AccountId, deposit: U128)-> Promise{
+        let project = self.internal_get_project_or_panic(project_id);
+        if project.fund_contract_id == fund_contract_id{
+            let buy_amount = self.internal_sale_commit(project_id,&account_id,deposit.0);
+            
+
+            if deposit.0 > buy_amount {
+                ext_ft_contract::ft_transfer(
+                    account_id.clone(), 
+                    U128(deposit.0 - buy_amount), 
+                    Some(format!("Transfer change to signer")), 
+                    &fund_contract_id, 
+                    DEPOSIT_ONE_YOCTOR, 
+                    FT_TRANSFER_GAS).then(
+                        ext_ft_contract::ft_transfer(
+                            project.fund_contract_id, 
+                            U128(buy_amount), 
+                            Some(format!("Transfer {} from {}",buy_amount,account_id.clone())), 
+                            &fund_contract_id, 
+                            DEPOSIT_ONE_YOCTOR, 
+                            FT_TRANSFER_GAS)
+                    )
+            } else {
+                ext_ft_contract::ft_transfer(
+                    project.fund_contract_id, 
+                    deposit, 
+                    Some(format!("Transfer {} from {}",buy_amount,account_id.clone())), 
+                    &fund_contract_id, 
+                    DEPOSIT_ONE_YOCTOR, 
+                    FT_TRANSFER_GAS)
+            }
+        
+        } else {
+            ext_ft_contract::ft_transfer(
+                account_id,
+                deposit,
+                Some("Transfer error: fund_contract_id not match. Transfer back deposited token to signer".to_string()),
+                &fund_contract_id,
+                DEPOSIT_ONE_YOCTOR,
+                FT_TRANSFER_GAS
+            )
+        }
     }
 
     /// get UserTierJson: tier, point, ticket, alloc

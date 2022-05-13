@@ -17,6 +17,24 @@ pub trait ExtStakingContract {
     fn ft_transfer_callback(&mut self, project_id: ProjectId, account_id: AccountId, claim_amount: U128);
 }
 
+// Firstly, user must call ft_transfer_call function from ft contract.
+// Ft contract will send ft_on_transfer function to ido_contract
+// This function will get msg from ft_transfer_call, handle it for getting deposit_amount, and do commit sale
+// Example of msg will be: {"project_id":1}
+pub trait IDOContractResolver{
+    fn ft_on_transfer(&mut self,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String
+        )-> PromiseOrValue<U128>;
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(crate = "near_sdk::serde")]
+pub struct Message{
+    project_id: ProjectId
+}
+
 #[near_bindgen]
 impl IDOContract {
     /// User can claim their bought unlocked token after sales.
@@ -81,5 +99,14 @@ impl IDOContract {
         // 
         
         0
+    }
+}
+
+#[near_bindgen]
+impl  IDOContractResolver for IDOContract {
+    fn ft_on_transfer(&mut self,sender_id: AccountId,amount: U128,msg: String)-> PromiseOrValue<U128>{
+        let Message {project_id} = near_sdk::serde_json::from_str(&msg).expect("Invalid message type");
+        self.commit(sender_id, project_id,env::signer_account_id(),amount);
+        PromiseOrValue::Value(U128(0))
     }
 }
