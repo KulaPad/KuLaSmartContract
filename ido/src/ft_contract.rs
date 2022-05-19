@@ -29,12 +29,6 @@ pub trait IDOContractResolver{
         )-> PromiseOrValue<U128>;
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(crate = "near_sdk::serde")]
-pub struct Message{
-    project_id: ProjectId
-}
-
 #[near_bindgen]
 impl IDOContract {
     /// User can claim their bought unlocked token after sales.
@@ -105,8 +99,19 @@ impl IDOContract {
 #[near_bindgen]
 impl  IDOContractResolver for IDOContract {
     fn ft_on_transfer(&mut self,sender_id: AccountId,amount: U128,msg: String)-> PromiseOrValue<U128>{
-        let Message {project_id} = near_sdk::serde_json::from_str(&msg).expect("Invalid message type");
-        self.commit(sender_id, project_id,env::signer_account_id(),amount);
+        let args: Vec<&str> = msg.split(":").collect();
+        if args.len() >= 1 {
+            match args[0] {
+                "project_id" => {
+                    let project_id : ProjectId = args[1].trim().parse::<u64>().unwrap();
+                    self.commit(sender_id, project_id,env::signer_account_id(),amount);
+                },
+                _ => {
+                    panic!("Transfer Error: Unknown message sent");
+                }
+            }
+        }
+        
         PromiseOrValue::Value(U128(0))
     }
 }
