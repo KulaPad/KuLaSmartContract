@@ -20,7 +20,7 @@ pub trait ExtStakingContract {
 // Firstly, user must call ft_transfer_call function from ft contract.
 // Ft contract will send ft_on_transfer function to ido_contract
 // This function will get msg from ft_transfer_call, handle it for getting deposit_amount, and do commit sale
-// Example of msg will be: {"project_id":1}
+// Example of msg will be: "project_id":1
 pub trait IDOContractResolver{
     fn ft_on_transfer(&mut self,
         sender_id: AccountId,
@@ -68,17 +68,13 @@ impl IDOContract {
         match env::promise_result(0) {
             PromiseResult::NotReady => unreachable!(),
             PromiseResult::Successful(_value) => {
-                // let upgradable_account: UpgradableAccount = self.accounts.get(&account_id).unwrap();
-                // let mut account: Account = Account::from(upgradable_account);
-
-                // // update account data
-                // account.pre_reward = 0;
-                // account.last_block_balance_change = env::block_index();
-
-                // self.accounts.insert(&account_id, &UpgradableAccount::from(account));
-                // self.total_paid_reward_balance += amount.0;
-
-                // amount
+                let mut project_account_unordered_map = self.internal_get_accounts_by_project_or_panic(project_id);
+                let mut project_account = self.internal_get_account_by_project_or_panic(project_id,&account_id);
+                let mut account_distribution = project_account.distribution_data.unwrap();
+                account_distribution.claimed_amount += claim_amount.0;
+                project_account.distribution_data = Some(account_distribution);
+                project_account_unordered_map.insert(&account_id,&project_account);
+                self.accounts_by_project.insert(&project_id,&project_account_unordered_map);
                 U128::from(0)
             },
             PromiseResult::Failed => env::panic(b"ERR_CALL_FAILED"),
@@ -97,14 +93,15 @@ impl IDOContract {
 }
 
 #[near_bindgen]
-impl  IDOContractResolver for IDOContract {
-    fn ft_on_transfer(&mut self,sender_id: AccountId,amount: U128,msg: String)-> PromiseOrValue<U128>{
+impl  IDOContract {
+    pub fn ft_on_transfer(&mut self,sender_id: AccountId,amount: U128,msg: String)-> PromiseOrValue<U128>{
         let args: Vec<&str> = msg.split(":").collect();
         if args.len() >= 1 {
             match args[0] {
                 "project_id" => {
                     let project_id : ProjectId = args[1].trim().parse::<u64>().unwrap();
-                    self.commit(sender_id, project_id,env::signer_account_id(),amount);
+                    env::log(format!("Ft on transfer success: project_id={},sender_id={},amount={},fund_contract_id={}", project_id, sender_id, amount.0,env::predecessor_account_id()).as_bytes());
+                    self.commit(sender_id, project_id,env::predecessor_account_id(),amount);
                 },
                 _ => {
                     panic!("Transfer Error: Unknown message sent");

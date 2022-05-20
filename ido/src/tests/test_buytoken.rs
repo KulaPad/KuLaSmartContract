@@ -45,8 +45,8 @@ fn test_buy_token() {
     let default_share_project_account_sale_json = AccountSaleJson::from(default_share_project_account_sale);
     let mut default_lottery_project_account_sale_json = AccountSaleJson::from(default_lottery_project_account_sale);
 
-    emulator.contract.commit("bob".to_string(),1,"kula".to_string(),U128(25));
-    emulator.contract.commit("bob".to_string(),2,"kula".to_string(),U128(25));
+    emulator.contract.commit("bob".to_string(),1,"ft_contract".to_string(),U128(25));
+    emulator.contract.commit("bob".to_string(),2,"ft_contract".to_string(),U128(25));
 
     let mut lottery_project_account_sale_json = emulator.contract.internal_get_project_account_info(2,"bob".to_string()).sale_data.unwrap();
     assert_eq!(default_lottery_project_account_sale_json.committed_amount,
@@ -58,7 +58,7 @@ fn test_buy_token() {
 
     emulator.update_context("alice".to_string(), "bob".to_string(), 20_000_000_000_000);
     emulator.set_block_timestamp(1651804401000000000);
-    emulator.contract.commit("bob".to_string(),2,"kula".to_string(),U128(30));
+    emulator.contract.commit("bob".to_string(),2,"ft_contract".to_string(),U128(30));
    
     let share_project_account_sale_json = emulator.contract.internal_get_project_account_info(1,"bob".to_string()).sale_data.unwrap();
     assert_eq!(default_share_project_account_sale_json.committed_amount,

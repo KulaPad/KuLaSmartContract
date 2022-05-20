@@ -85,6 +85,13 @@ impl IDOContract{
         project.sale_start_date -= time_period_after_sales_end;
         project.sale_end_date -= time_period_after_sales_end;
 
+        println!("After change:"); 
+        println!("Whitelist start date: {}", project.whitelist_start_date);
+        println!("Whitelist end date: {}", project.whitelist_end_date);
+        println!("Sales start date: {}", project.sale_start_date);
+        println!("Sales end date: {}", project.sale_end_date);
+        println!("Current time: {}", current_timestamp);
+
         self.projects.insert(&project_id, &project);
     }
 

@@ -259,7 +259,7 @@ impl IDOContract {
         if project.fund_contract_id == fund_contract_id{
             let buy_amount = self.internal_sale_commit(project_id,&account_id,deposit.0);
             
-
+            env::log(format!("Total buyed: {}",buy_amount ).as_bytes());
             if deposit.0 > buy_amount {
                 ext_ft_contract::ft_transfer(
                     account_id.clone(), 

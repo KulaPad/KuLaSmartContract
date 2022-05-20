@@ -168,6 +168,10 @@ impl Project {
     pub(crate) fn assert_sale_period(&self) {
         assert!(self.is_in_sale_period(), "Project isn't in sale period.");
     }
+
+    pub(crate) fn assert_distribution_period(&self) {
+        assert!(self.is_in_distribution_period(), "Project isn't in distribution period.");
+    }
     
     pub(crate) fn is_in_whitelist_period(&self) -> bool {
         let current_time = get_current_time();
@@ -507,7 +511,72 @@ impl IDOContract {
     pub(crate) fn internal_distribute_token_to_users(&mut self, project_id: ProjectId) {
         // Get project account token sales
         let project = self.internal_get_project_or_panic(project_id);
+        let project_sale_type = &project.sale_type;
+        //  Traverse all account_id in ProjectAccountUnorderedMap
+        let accounts_by_project_1 = self.internal_get_accounts_by_project_or_panic(project_id);
+        let mut accounts_by_project_2 = self.internal_get_accounts_by_project_or_panic(project_id);
+        match project_sale_type {
+            SaleType::Shared { 
+                min_allocation_per_user: _,
+                max_allocation_per_user: _ 
+            } => {             
+                for (account_id, project_account) in accounts_by_project_1.iter(){
+                    
+                    let account_sale = project_account.sale_data.unwrap_or(
+                        AccountSale{
+                        committed_amount: 0,
+                        sale_data: AccountSaleData::Shared
+                    });   
+                        
+                    if account_sale.committed_amount != 0 {
+                        //  Create AccountDistribution data for all account
+                        let account_distribution = AccountDistribution {
+                            unlocked_amount: (account_sale.committed_amount / project.total_fund_committed) * project.token_raised_amount,
+                            locked_amount: 0,
+                            claimed_amount: 0
+                        };
+                        let new_project_account = ProjectAccount {
+                            sale_data: Some(account_sale),
+                            distribution_data: Some(account_distribution)
+                        };
+                        accounts_by_project_2.insert(&account_id, &new_project_account);
+                    }
+                }
+            },
+
+            SaleType::Lottery { 
+                allocation_per_ticket, 
+                total_tickets, 
+                win_ticket_ids
+            } =>{
+                let tickets_by_project = self.internal_get_tickets_by_project_or_panic(project_id);
+                // TODO: Random win_ticket and save to win_ticket_ids
+                
+                for (account_id, project_account) in accounts_by_project_1.iter(){
+                    //  Create AccountDistribution data for all account
+                    let account_sale = project_account.sale_data.unwrap_or(
+                        AccountSale{
+                        committed_amount: 0,
+                        sale_data: AccountSaleData::Lottery(
+                            LotteryAccountSaleData{
+                                eligible_tickets: 0,
+                                deposit_tickets: 0,
+                                ticket_ids: vec![],
+                                win_ticket_ids: vec![]
+                            })
+                    });
+
+                    if account_sale.committed_amount != 0 {
+                        //  TODO: Create AccountDistribution data for all account
+                    }
+                }
+
+                self.projects.insert(&project_id, &project);
+            }
+        }
         
+        //  Insert into accounts_by_project
+        self.accounts_by_project.insert(&project_id, &accounts_by_project_2);
     }
 
 }

@@ -1,4 +1,4 @@
-use crate::utils::init;
+use crate::utils::{init,print_result};
 use kulapad_ido::modules::account::{ProjectAccountJson,AccountSale, AccountSaleData, AccountSaleJson};
 use kulapad_ido::modules::project::{ProjectJson};
 use near_sdk::serde_json::json;
@@ -149,13 +149,13 @@ pub fn test_commit_sale_share_project(){
     let (root,alice,ido,ft_contract,staking_contract,ido_contract) = init_whitelisting_project();
 
     let default_share_project_account_sale = AccountSale{
-        committed_amount: 25,
+        committed_amount: 100,
         sale_data: AccountSaleData::Shared
     };
     let default_share_project_account_sale_json = AccountSaleJson::from(default_share_project_account_sale);
 
 
-    alice.call(
+    let outcome = alice.call(
         ft_contract.account_id(),
         "ft_transfer_call",
         &json!({
@@ -167,6 +167,10 @@ pub fn test_commit_sale_share_project(){
         1
     );
 
+    
+    print_result(&outcome);
+    outcome.assert_success();
+
     let project_account_json :ProjectAccountJson = root.view(
         ido_contract.account_id(),
         "get_project_account_info",
@@ -177,6 +181,17 @@ pub fn test_commit_sale_share_project(){
     ).unwrap_json();
     println!("{:?}",project_account_json);
 
+    let share_project_account_sale_json = project_account_json.sale_data.unwrap();
+    assert_eq!(default_share_project_account_sale_json.committed_amount,
+        share_project_account_sale_json.committed_amount,
+        "Committed amount project 1 not match");
 
-
+    let project_json : ProjectJson = root.view(
+        ido_contract.account_id(),
+        "get_project",
+        &json!({
+            "project_id" : 1
+        }).to_string().as_bytes()
+    ).unwrap_json();
+    assert_eq!(project_json.total_fund_committed,U128(100),"Total fund committed not match");
 }

@@ -1,5 +1,5 @@
 use near_sdk::{serde_json::json, json_types::{U64,U128, ValidAccountId}};
-use near_sdk_sim::{init_simulator, UserAccount, DEFAULT_GAS, STORAGE_AMOUNT, to_yocto};
+use near_sdk_sim::{init_simulator, UserAccount, DEFAULT_GAS, STORAGE_AMOUNT, to_yocto, ExecutionResult};
 
 near_sdk_sim::lazy_static_include::lazy_static_include_bytes! {
     IDO_WASM_FILE => "../res/kulapad_ido.wasm",
@@ -78,6 +78,16 @@ pub fn init() -> (UserAccount, UserAccount, UserAccount,UserAccount, UserAccount
         to_yocto("0.1")
     );
 
+    root.call(
+        ft_contract.account_id(), 
+        "storage_deposit", 
+        &json!({
+            "account_id": ido_contract.account_id()
+        }).to_string().as_bytes(), 
+        DEFAULT_GAS, 
+        to_yocto("0.1")
+    );
+
     // Transfer 50% total supply to staking contract
     alice.call(
         ft_contract.account_id(), 
@@ -93,6 +103,16 @@ pub fn init() -> (UserAccount, UserAccount, UserAccount,UserAccount, UserAccount
     (root,alice,ido,ft_contract,staking_contract,ido_contract)
 }
 
+pub fn print_result(result: &ExecutionResult) {
+    println!("{:?}", result);
+    println!("{:?}", result.promise_results());
+
+    for receipt_result in result.get_receipt_results() {
+        if let Some(receipt_result) = receipt_result {
+            print_result(&receipt_result);
+        }
+    }
+}
 
 #[test]
 pub fn init_contract_test(){

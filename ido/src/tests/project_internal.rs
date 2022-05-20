@@ -14,7 +14,7 @@ impl IDOContract{
             token_raised_amount: U128(1000000000000000),
             token_sale_rate_numberator: 10u64,
             token_sale_rate_denominator: 1u64,
-            fund_contract_id: "kula".to_string(),
+            fund_contract_id: "ft_contract".to_string(),
             whitelist_type: WhitelistType::None,
             sale_type : SaleType::Shared{
                 min_allocation_per_user: 10,
@@ -37,7 +37,7 @@ impl IDOContract{
             token_raised_amount: U128(1000000000000000),
             token_sale_rate_numberator: 10u64,
             token_sale_rate_denominator: 1u64,
-            fund_contract_id: "kula".to_string(),
+            fund_contract_id: "ft_contract".to_string(),
             whitelist_type: WhitelistType::Ticket,
             sale_type : SaleType::Lottery{
                 allocation_per_ticket : 10,
@@ -61,7 +61,7 @@ impl IDOContract{
             token_raised_amount: U128(1000000000000000),
             token_sale_rate_numberator: 10u64,
             token_sale_rate_denominator: 1u64,
-            fund_contract_id: "kula".to_string(),
+            fund_contract_id: "ft_contract".to_string(),
             whitelist_type: WhitelistType::XToken(100),
             sale_type : SaleType::Shared{
                 min_allocation_per_user: 10,
