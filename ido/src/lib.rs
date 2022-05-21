@@ -252,52 +252,18 @@ impl IDOContract {
         project.status = ProjectStatus::Sales;
         self.projects.insert(&project_id, &project);
     }
-
-    
-    pub fn commit(&mut self,account_id:AccountId, project_id: ProjectId, fund_contract_id: AccountId, deposit: U128)-> Promise{
+    #[payable]
+    pub fn commit(&mut self, project_id: ProjectId){
         let project = self.internal_get_project_or_panic(project_id);
-        if project.fund_contract_id == fund_contract_id{
-            let buy_amount = self.internal_sale_commit(project_id,&account_id,deposit.0);
-            
-            env::log(format!("Total buyed: {}",buy_amount ).as_bytes());
-            if deposit.0 > buy_amount {
-                ext_ft_contract::ft_transfer(
-                    account_id.clone(), 
-                    U128(deposit.0 - buy_amount), 
-                    Some(format!("Transfer change to signer")), 
-                    &fund_contract_id, 
-                    DEPOSIT_ONE_YOCTOR, 
-                    FT_TRANSFER_GAS).then(
-                        ext_ft_contract::ft_transfer(
-                            project.fund_contract_id, 
-                            U128(buy_amount), 
-                            Some(format!("Transfer {} from {}",buy_amount,account_id.clone())), 
-                            &fund_contract_id, 
-                            DEPOSIT_ONE_YOCTOR, 
-                            FT_TRANSFER_GAS)
-                    )
-            } else {
-                ext_ft_contract::ft_transfer(
-                    project.fund_contract_id, 
-                    deposit, 
-                    Some(format!("Transfer {} from {}",buy_amount,account_id.clone())), 
-                    &fund_contract_id, 
-                    DEPOSIT_ONE_YOCTOR, 
-                    FT_TRANSFER_GAS)
-            }
-        
+        let deposit_amount = env::attached_deposit();
+        let account_id = env::signer_account_id();
+        if project.fund_contract_id == ""{
+            self.internal_sale_commit(project_id, &account_id, deposit_amount,"near".to_string());
         } else {
-            ext_ft_contract::ft_transfer(
-                account_id,
-                deposit,
-                Some("Transfer error: fund_contract_id not match. Transfer back deposited token to signer".to_string()),
-                &fund_contract_id,
-                DEPOSIT_ONE_YOCTOR,
-                FT_TRANSFER_GAS
-            )
-        }
+            Promise::new(account_id).transfer(deposit_amount);
+            panic!("Incorrect fund_contract_id");
+        }   
     }
-
     /// get UserTierJson: tier, point, ticket, alloc
     pub fn get_user_tier_info(&self) -> UserTierJson {
         let user: AccountId = env::predecessor_account_id();

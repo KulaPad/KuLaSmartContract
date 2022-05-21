@@ -358,8 +358,25 @@ impl IDOContract {
         };
     }
 
+    pub(crate) fn internal_commit_ft_token(&mut self,account_id:AccountId, project_id: ProjectId, fund_contract_id: AccountId, deposit: U128, memo: String)-> U128{
+        let project = self.internal_get_project_or_panic(project_id);
+        
+        let buy_amount = self.internal_sale_commit(project_id,&account_id,deposit.0,memo);
+            
+        env::log(format!("Total buyed: {}",buy_amount ).as_bytes());
+
+        ext_ft_contract::ft_transfer(
+                    project.fund_contract_id, 
+                    U128(buy_amount), 
+                    Some(format!("Transfer {} from {}",buy_amount,account_id.clone())), 
+                    &fund_contract_id, 
+                    DEPOSIT_ONE_YOCTOR, 
+                    FT_TRANSFER_GAS);
+        U128(deposit.0 - buy_amount)
+    }
+
     // Project Sale
-    pub(crate) fn internal_sale_commit(&mut self, project_id: ProjectId,account_id: &AccountId, amount: Balance) -> Balance{
+    pub(crate) fn internal_sale_commit(&mut self, project_id: ProjectId,account_id: &AccountId, amount: Balance, memo:String) -> Balance{
         
         
         let project = self.internal_get_project_or_panic(project_id);                         
@@ -387,7 +404,8 @@ impl IDOContract {
                                                             win_ticket_ids,
                                                             project_id,
                                                             account_id,
-                                                            amount)
+                                                            amount,
+                                                            memo)
                 }
         }
     }
@@ -439,12 +457,23 @@ impl IDOContract {
         project_ticket_win_ids: Option<Vec<u64>>,
         project_id: ProjectId, 
         account_id: &AccountId,
-        deposit: u128) -> Balance{
+        deposit: u128,
+        memo: String
+    ) -> Balance{
             let mut tickets_by_project = self.internal_get_tickets_by_project_or_panic(project_id);
             let mut project_account_unordered_map = self.internal_get_accounts_by_project_or_panic(project_id);
             let mut project_account = self.internal_get_account_by_project_or_panic(project_id,&account_id);
             let mut project = self.internal_get_project_or_panic(project_id);
-            let account_sale = project_account.sale_data.unwrap();
+            let account_sale = project_account.sale_data.unwrap_or( AccountSale{
+                committed_amount: 0,
+                sale_data: AccountSaleData::Lottery(
+                    LotteryAccountSaleData{
+                        eligible_tickets: 0,
+                        deposit_tickets: 0,
+                        ticket_ids: vec![],
+                        win_ticket_ids: vec![]
+                    })
+            });
                     
             match account_sale.sale_data{ 
                 AccountSaleData::Lottery(
@@ -461,7 +490,20 @@ impl IDOContract {
     
                         if deposit > (tickets_num * allocation_per_ticket){
                             //  Transfer back change deposit
-                            Promise::new(account_id.clone()).transfer(deposit - tickets_num * allocation_per_ticket);
+                            if memo == "near".to_string() {
+                                Promise::new(account_id.clone()).transfer(deposit - tickets_num * allocation_per_ticket);
+                            } else if memo == "ft_token".to_string() {
+                                let transfer_back = deposit - tickets_num * allocation_per_ticket;
+                                ext_ft_contract::ft_transfer(
+                                    project.fund_contract_id.clone(), 
+                                    U128(transfer_back), 
+                                    Some(format!("Transfer back {} change deposit",transfer_back)), 
+                                    &project.fund_contract_id, 
+                                    DEPOSIT_ONE_YOCTOR, 
+                                    FT_TRANSFER_GAS);
+                            } else {
+                                panic!("Incorrect memo");
+                            }
                         };
     
                         for i in total_tickets..(total_tickets+ tickets_num as u64) {
@@ -551,7 +593,13 @@ impl IDOContract {
             } =>{
                 let tickets_by_project = self.internal_get_tickets_by_project_or_panic(project_id);
                 // TODO: Random win_ticket and save to win_ticket_ids
-                
+                // Blocktimestamp of near is nanoseconds so 4 last numbers of timestamp will be randomly
+                // Ex: if the 4 last numbers is 1234. We do 123 * 234 * 1234 = 35516988. 
+                // So we have 35, 51, 69, 88 is 4 numbers of last 2digit in user ticket.
+                // Check through all user ticket by tickets_by_project.
+                // Ex: If total tickets is 12055. 
+                //     But there're only 1_000_000(token_raised_amount) / 1_000 (allocation_per_ticket) = 1000 win tickets
+                // 
                 for (account_id, project_account) in accounts_by_project_1.iter(){
                     //  Create AccountDistribution data for all account
                     let account_sale = project_account.sale_data.unwrap_or(

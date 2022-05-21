@@ -130,7 +130,6 @@ impl IDOContract{
             PromiseResult::Failed =>false,
             PromiseResult::Successful(result) => {
                 let account_json = near_sdk::serde_json::from_slice::<AccountJson>(&result).unwrap();
-                env::log(format!("Prepared gas: {}, Used gas: {}",env::prepaid_gas(),env::used_gas()).as_bytes());
                 let registered = self.proccess_register_whitelist(account_id, project_id,account_json.point, xtoken);
                 env::log(format!("Prepared gas: {}, Used gas: {}",env::prepaid_gas(),env::used_gas()).as_bytes());
 

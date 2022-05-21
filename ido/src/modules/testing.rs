@@ -11,6 +11,7 @@ impl IDOContract{
         self.create_project(Self::internal_new_project_2());
         self.create_project(Self::internal_new_project_3());
         self.create_project(Self::internal_new_project_4());
+        self.create_project(Self::internal_new_project_5());
     }
 
     pub fn create_sample_project(&mut self, project_no: u8) {

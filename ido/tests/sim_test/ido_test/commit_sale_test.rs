@@ -77,10 +77,11 @@ pub fn init_whitelisting_project()-> (UserAccount, UserAccount, UserAccount,User
     
     assert!(is_whitelisted,"Not join whitelist project 2 after register");
 
-    let current_time : U64 = root.view(
+    let current_time : U64 = root.call(
         ido_contract.account_id(),
         "get_current_block_timestamp",
         &json!({}).to_string().as_bytes(),
+        DEFAULT_GAS,0
     ).unwrap_json();
     println!("Current time: {}", current_time.0);
 

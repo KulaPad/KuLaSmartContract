@@ -14,6 +14,10 @@ near-sdk = "3.1.0"
 [dev-dependencies]
 near-sdk-sim = "3.1.0"
 near-contract-standards = "3.1.1"
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8690f32f4a5840544fd9547c92a37852721fe0eb
 [profile.release]
 codegen-units = 1
 # Tell `rustc` to optimize for small code size.

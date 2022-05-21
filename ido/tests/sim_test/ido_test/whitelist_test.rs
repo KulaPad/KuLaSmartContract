@@ -41,10 +41,12 @@ pub fn test_join_whitelist(){
     println!("{:?}",project_json);
     assert_eq!(project_json.whitelist_type,WhitelistType::None,"Project 1 WhitelistType not match");
 
-    let current_time : U64 = root.view(
+    let current_time : U64 = root.call(
         ido_contract.account_id(),
         "get_current_block_timestamp",
-        &json!({}).to_string().as_bytes()
+        &json!({}).to_string().as_bytes(),
+        DEFAULT_GAS,
+        0
     ).unwrap_json();
     println!("Current time: {}",current_time.0);
 
@@ -62,9 +64,8 @@ pub fn test_join_whitelist(){
 
     alice.call(
         ido_contract.account_id(),
-        "internal_register_whitelist",
+        "register_whitelist",
         &json!({
-            "account_id" : alice.account_id(),
             "project_id" : 1
         }).to_string().as_bytes(),
         DEFAULT_GAS,
@@ -80,7 +81,6 @@ pub fn test_join_whitelist(){
         }).to_string().as_bytes()
     ).unwrap_json();
     println!("{:?}",project_account_json);
-    // assert!(project_account_json.is_whitelist,"ProjectAccountJson not match");
 
     is_whitelisted = root.view(
         ido_contract.account_id(),

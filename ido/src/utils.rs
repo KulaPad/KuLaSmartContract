@@ -63,3 +63,9 @@ impl IDOContract{
     }
 }
 
+#[near_bindgen]
+impl IDOContract {
+    pub fn get_current_block_timestamp()-> U64 {
+        U64(env::block_timestamp())
+    }
+}

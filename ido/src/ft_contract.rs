@@ -39,9 +39,11 @@ impl IDOContract {
         assert!(project.is_in_distribution_period(), "The project isn't in distribution period.");
 
         assert_one_yocto();
-
         let claim_amount = self.internal_claim(project_id, &account_id);
 
+        // TODO: Update the claimed amount in the project_account before starting to transfer token to user.
+        // If the cross-call transaction failed, it's need to roll back the data that was updated.
+        
         // handle transfer withdraw
         ext_ft_contract::ft_transfer(
             account_id.clone(), 
@@ -69,12 +71,22 @@ impl IDOContract {
             PromiseResult::NotReady => unreachable!(),
             PromiseResult::Successful(_value) => {
                 let mut project_account_unordered_map = self.internal_get_accounts_by_project_or_panic(project_id);
-                let mut project_account = self.internal_get_account_by_project_or_panic(project_id,&account_id);
-                let mut account_distribution = project_account.distribution_data.unwrap();
-                account_distribution.claimed_amount += claim_amount.0;
-                project_account.distribution_data = Some(account_distribution);
-                project_account_unordered_map.insert(&account_id,&project_account);
-                self.accounts_by_project.insert(&project_id,&project_account_unordered_map);
+                let mut project_account_1 = self.internal_get_account_by_project_or_panic(project_id,&account_id);
+                let mut project_account_2 = self.internal_get_account_by_project_or_panic(project_id,&account_id);
+                let account_distribution = project_account_1.distribution_data;
+                if let Some(mut account_distribution) = account_distribution{
+                    account_distribution.claimed_amount += claim_amount.0;
+                    project_account_1.distribution_data = Some(account_distribution);
+                    project_account_unordered_map.insert(&account_id,&project_account_1);
+                    self.accounts_by_project.insert(&project_id,&project_account_unordered_map);
+                } else {
+                    let mut account_sale = project_account_2.sale_data.unwrap();
+                    account_sale.committed_amount = 0;
+                    project_account_2.sale_data = Some(account_sale);
+                    project_account_unordered_map.insert(&account_id,&project_account_2);
+                    self.accounts_by_project.insert(&project_id,&project_account_unordered_map);
+                }
+                
                 U128::from(0)
             },
             PromiseResult::Failed => env::panic(b"ERR_CALL_FAILED"),
@@ -82,13 +94,18 @@ impl IDOContract {
     }
 
     pub(crate) fn internal_claim(&mut self, project_id: ProjectId, account_id: &AccountId) -> Balance{
-        // Get deposit near amount
-
+        // Get deposit token amount and project_ft_contract_id
+        let project_account = self.internal_get_account_by_project_or_panic(project_id,&account_id);
+        let sale_data = project_account.sale_data.unwrap();
+        let distribution_data = project_account.distribution_data;
         // Calculate token to transfer for user
-
-        // 
+        let claim_amount = if let Some(distribution_data) = distribution_data {
+            distribution_data.unlocked_amount - distribution_data.claimed_amount
+        } else {
+            sale_data.committed_amount
+        };
         
-        0
+        claim_amount 
     }
 }
 
@@ -100,14 +117,36 @@ impl  IDOContract {
             match args[0] {
                 "project_id" => {
                     let project_id : ProjectId = args[1].trim().parse::<u64>().unwrap();
-                    env::log(format!("Ft on transfer success: project_id={},sender_id={},amount={},fund_contract_id={}", project_id, sender_id, amount.0,env::predecessor_account_id()).as_bytes());
-                    self.commit(sender_id, project_id,env::predecessor_account_id(),amount);
+                    let project = self.internal_get_project_or_panic(project_id);
+                    let fund_contract_id = env::predecessor_account_id();
+                    if project.fund_contract_id == fund_contract_id{ 
+                        env::log(format!("Ft on transfer success: project_id={},sender_id={},amount={},fund_contract_id={}", project_id, sender_id, amount.0,env::predecessor_account_id()).as_bytes());
+                        let change = self.internal_commit_ft_token(sender_id, project_id, fund_contract_id,amount,"ft_token".to_string());
+                        return PromiseOrValue::Value(change);
+                    } else {
+                        ext_ft_contract::ft_transfer(
+                            sender_id,
+                            amount,
+                            Some("Transfer Error: fund_contract_id not match. Transfer back deposited token to signer".to_string()),
+                            &fund_contract_id,
+                            DEPOSIT_ONE_YOCTOR,
+                            FT_TRANSFER_GAS
+                        );
+                    }
                 },
                 _ => {
-                    panic!("Transfer Error: Unknown message sent");
+                    ext_ft_contract::ft_transfer(
+                        sender_id,
+                        amount,
+                        Some("Transfer Error: Unknown message sent".to_string()),
+                        &env::predecessor_account_id(),
+                        DEPOSIT_ONE_YOCTOR,
+                        FT_TRANSFER_GAS
+                    );
                 }
             }
         }
+         
         
         PromiseOrValue::Value(U128(0))
     }
