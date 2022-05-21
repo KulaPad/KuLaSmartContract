@@ -6,6 +6,8 @@
 - Staking contract owner id: ``` kulapad-contract.testnet ```
 - User account id: ``` alice.kulapad-contract.testnet ```
 
+<hr>
+
 ## Deployment
 
 ### Deploy & initialize contract
@@ -13,14 +15,14 @@
 near deploy --wasmFile .\res\kulapad_staking.wasm --accountId staking.kulapad-contract.testnet --initFunction new_default_config --initArgs '{""owner_id"": ""kulapad-contract.testnet"", ""ft_contract_id"": ""token-kulapad.testnet""}'
 ```
 
-#### Result
+Result
 ```
 Transaction Id FvGQ5vs7yKNYUidAPqPCxcbkoyuyjRjEn1fM182Mdq18
 To see the transaction in the transaction explorer, please open this url in your browser
 https://explorer.testnet.near.org/transactions/FvGQ5vs7yKNYUidAPqPCxcbkoyuyjRjEn1fM182Mdq18
 Done deploying and initializing staking.kulapad-contract.testnet
 ```
-
+<hr>
 ## Owner
 
 ### Set tier config
@@ -28,7 +30,7 @@ Done deploying and initializing staking.kulapad-contract.testnet
 near call staking.kulapad-contract.testnet set_tier_config '{""tier"": ""Tier1"", ""config"": {""min_point"": 10000000000}}' --accountId kulapad-contract.testnet
 ```
 
-#### Result
+Result
 ```
 Scheduling a call: staking.kulapad-contract.testnet.set_tier_config({"tier": "Tier1", "config": {"min_point": 10000000000}})
 Doing account.functionCall()
@@ -43,7 +45,7 @@ https://explorer.testnet.near.org/transactions/73STFqyrJPCcP2YAZoUvVHnMW8mKSV7UN
 near call staking.kulapad-contract.testnet reset_lock '{""account_id"": ""alice.kulapad-contract.testnet""}' --accountId kulapad-contract.testnet
 ```
 
-#### Result
+Result
 ```
 Scheduling a call: staking.kulapad-contract.testnet.reset_lock({"account_id": "alice.kulapad-contract.testnet"})
 Doing account.functionCall()
@@ -52,14 +54,14 @@ To see the transaction in the transaction explorer, please open this url in your
 https://explorer.testnet.near.org/transactions/41FNpMXbXnQuzzHGpqkhgGpWaj3WhJB5boqbGGbgKfWm
 ''
 ```
-
+<hr>
 ## Storage management
 ### Deposit storage fee to ```FT token``` for ```Staking contract```
 ```
 near call token-kulapad.testnet storage_deposit --accountId staking.kulapad-contract.testnet --deposit 0.0125
 ```
 
-#### Result
+Result
 ```
 Scheduling a call: token-kulapad.testnet.storage_deposit() with attached 0.0125 NEAR
 Doing account.functionCall()
@@ -79,7 +81,7 @@ near call token-kulapad.testnet storage_deposit --accountId alice.kulapad-contra
 near view token-kulapad.testnet storage_balance_of '{""account_id"": ""alice.kulapad-contract.testnet""}'
 ```
 
-#### Result
+Result
 ```
 View call: token-kulapad.testnet.storage_balance_of({"account_id": "alice.kulapad-contract.testnet"})
 { total: '1250000000000000000000', available: '0' }
@@ -90,7 +92,7 @@ View call: token-kulapad.testnet.storage_balance_of({"account_id": "alice.kulapa
 near call staking.kulapad-contract.testnet storage_deposit --accountId alice.kulapad-contract.testnet --deposit 0.0125
 ```
 
-#### Result
+Result
 ```
 Scheduling a call: staking.kulapad-contract.testnet.storage_deposit() with attached 0.0125 NEAR
 Doing account.functionCall()
@@ -105,12 +107,12 @@ https://explorer.testnet.near.org/transactions/BUaYP6V8j2ct3hvPzsHu6PwvmVkJ7Dt7m
 near view staking.kulapad-contract.testnet storage_balance_of '{""account_id"": ""alice.kulapad-contract.testnet""}'
 ```
 
-#### Result
+Result
 ```
 View call: staking.kulapad-contract.testnet.storage_balance_of({"account_id": "alice.kulapad-contract.testnet"})
 '1'
 ```
-
+<hr>
 ## FT contract
 ### Claim token from ```FT contract```
 
@@ -118,7 +120,7 @@ View call: staking.kulapad-contract.testnet.storage_balance_of({"account_id": "a
 near call token-kulapad.testnet claim_testnet_token --accountId alice.kulapad-contract.testnet
 ```
 
-#### Result
+Result
 ```
 Scheduling a call: token-kulapad.testnet.claim_testnet_token()
 Doing account.functionCall()
@@ -129,14 +131,14 @@ To see the transaction in the transaction explorer, please open this url in your
 https://explorer.testnet.near.org/transactions/Bw6F8aSuWu6LQ36sJmkxfsGYrUbyBiSTinU4ddXzkVDh
 ''
 ```
-
+<hr>
 ## Account info
 ### Get account info
 ```
 near view staking.kulapad-contract.testnet get_account_info '{""account_id"": ""alice.kulapad-contract.testnet""}'
 ```
 
-#### Result
+Result
 ```
 View call: staking.kulapad-contract.testnet.get_account_info({"account_id": "alice.kulapad-contract.testnet"})
 {
@@ -154,14 +156,14 @@ View call: staking.kulapad-contract.testnet.get_account_info({"account_id": "ali
   point: '0'
 }
 ```
-
+<hr>
 ## Staking
 ### Stake by calling to ```FT contract```
 ```
 near call token-kulapad.testnet ft_transfer_call '{"receiver_id": "staking.kulapad-contract.testnet", "amount": "10000000000", "msg": ""}' --accountId alice.kulapad-contract.testnet --depositYocto 1 --gas 50000000000000
 ```
 
-#### Result
+Result
 ```
 Scheduling a call: token-kulapad.testnet.ft_transfer_call({"receiver_id": "staking.kulapad-contract.testnet", "amount": "10000000000", "msg": ""}) with attached 0.000000000000000000000001 NEAR
 Doing account.functionCall()
@@ -173,7 +175,7 @@ https://explorer.testnet.near.org/transactions/t13XdD9e5mZHnNj2fUvgFmvH5jisSt34E
 '10000000000'
 ```
 
-#### Result for ```Account Info```
+Result for ```Account Info```
 ```
 View call: staking.kulapad-contract.testnet.get_account_info({"account_id": "alice.kulapad-contract.testnet"})
 {
@@ -197,7 +199,7 @@ View call: staking.kulapad-contract.testnet.get_account_info({"account_id": "ali
 near call token-kulapad.testnet ft_transfer_call '{""receiver_id"": ""staking.kulapad-contract.testnet"", ""amount"": ""1000000000"", ""msg"": ""lock:360""}' --accountId alice.kulapad-contract.testnet --depositYocto 1 --gas 50000000000000
 ```
 
-#### Result
+Result
 ```
 Scheduling a call: token-kulapad.testnet.ft_transfer_call({"receiver_id": "staking.kulapad-contract.testnet", "amount": "1000000000", "msg": "lock:360"}) with attached 0.000000000000000000000001 NEAR
 Doing account.functionCall()
@@ -211,7 +213,7 @@ https://explorer.testnet.near.org/transactions/Emj1hTQFTrvkpG5USXf9geRL2Xpdp1xvZ
 '1000000000'
 ```
 
-#### Result for ```Account Info```
+Result for ```Account Info```
 ```
 View call: staking.kulapad-contract.testnet.get_account_info({"account_id": "alice.kulapad-contract.testnet"})
 {
@@ -235,7 +237,7 @@ View call: staking.kulapad-contract.testnet.get_account_info({"account_id": "ali
 near call staking.kulapad-contract.testnet lock '{""amount"": ""5000000000"", ""locked_days"": 36}' --accountId alice.kulapad-contract.testnet
 ```
 
-#### Result
+Result
 ```
 Scheduling a call: staking.kulapad-contract.testnet.lock({"amount": "5000000000", "locked_days": 36})
 Doing account.functionCall()
@@ -245,7 +247,7 @@ https://explorer.testnet.near.org/transactions/HnMvtNdknW5wahxAiQ4exUhXnPBqnaFjE
 ''
 ```
 
-#### Result for ```Account Info```
+Result for ```Account Info```
 ```
 View call: staking.kulapad-contract.testnet.get_account_info({"account_id": "alice.kulapad-contract.testnet"})
 {
@@ -269,7 +271,7 @@ View call: staking.kulapad-contract.testnet.get_account_info({"account_id": "ali
 near call staking.kulapad-contract.testnet lock '{""amount"": ""0"", ""locked_days"": 1}' --accountId alice.kulapad-contract.testnet
 ```
 
-#### Result
+Result
 ```
 Scheduling a call: staking.kulapad-contract.testnet.lock({"amount": "0", "locked_days": 1})
 Doing account.functionCall()
@@ -279,7 +281,7 @@ https://explorer.testnet.near.org/transactions/9rEd6ejByQH2NjoDVv2RjfZrq9MSoUpD1
 ''
 ```
 
-#### Result for ```Account Info```
+Result for ```Account Info```
 ```
 View call: staking.kulapad-contract.testnet.get_account_info({"account_id": "alice.kulapad-contract.testnet"})
 {
@@ -304,7 +306,7 @@ View call: staking.kulapad-contract.testnet.get_account_info({"account_id": "ali
 near call staking.kulapad-contract.testnet lock '{""amount"": ""5000000000"", ""locked_days"": 0}' --accountId alice.kulapad-contract.testnet
 ```
 
-#### Result
+Result
 ```
 Scheduling a call: staking.kulapad-contract.testnet.lock({"amount": "5000000000", "locked_days": 0})
 Doing account.functionCall()
@@ -314,7 +316,7 @@ https://explorer.testnet.near.org/transactions/6X2cBpaVBmSuYCkwfcTAKSCNrMmF5Qs4B
 ''
 ```
 
-#### Result for ```Account Info```
+Result for ```Account Info```
 ```
 View call: staking.kulapad-contract.testnet.get_account_info({"account_id": "alice.kulapad-contract.testnet"})
 {

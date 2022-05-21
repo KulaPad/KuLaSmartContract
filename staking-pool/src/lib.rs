@@ -270,32 +270,32 @@ mod tests {
         let context = get_context(false);
         testing_env!(context.build());
 
-        let token_decimal: u128 = DEFAULT_TOKEN_DECIMAL as u128;
+        let multiplier = 10u128.pow(DEFAULT_TOKEN_DECIMAL as u32);
         let contract = StakingContract::new_default_config(accounts(1).to_string(), accounts(1).to_string());
 
         // Tier0
         assert_eq!(Tier::Tier0, contract.internal_get_tier(0));
-        assert_eq!(Tier::Tier0, contract.internal_get_tier(1 * token_decimal));
-        assert_eq!(Tier::Tier0, contract.internal_get_tier(100 * token_decimal - 1));
+        assert_eq!(Tier::Tier0, contract.internal_get_tier(1 * multiplier));
+        assert_eq!(Tier::Tier0, contract.internal_get_tier(100 * multiplier - 1));
 
         // Tier1
-        assert_eq!(Tier::Tier1, contract.internal_get_tier(100 * token_decimal));
-        assert_eq!(Tier::Tier1, contract.internal_get_tier(100 * token_decimal + 1));
-        assert_eq!(Tier::Tier1, contract.internal_get_tier(1_000 * token_decimal - 1));
+        assert_eq!(Tier::Tier1, contract.internal_get_tier(100 * multiplier));
+        assert_eq!(Tier::Tier1, contract.internal_get_tier(100 * multiplier + 1));
+        assert_eq!(Tier::Tier1, contract.internal_get_tier(1_000 * multiplier - 1));
 
         // Tier2
-        assert_eq!(Tier::Tier2, contract.internal_get_tier(1_000 * token_decimal));
-        assert_eq!(Tier::Tier2, contract.internal_get_tier(1_000 * token_decimal + 1));
-        assert_eq!(Tier::Tier2, contract.internal_get_tier(5_000 * token_decimal - 1));
+        assert_eq!(Tier::Tier2, contract.internal_get_tier(1_000 * multiplier));
+        assert_eq!(Tier::Tier2, contract.internal_get_tier(1_000 * multiplier + 1));
+        assert_eq!(Tier::Tier2, contract.internal_get_tier(5_000 * multiplier - 1));
 
         // Tier3
-        assert_eq!(Tier::Tier3, contract.internal_get_tier(5_000 * token_decimal));
-        assert_eq!(Tier::Tier3, contract.internal_get_tier(5_000 * token_decimal + 1));
-        assert_eq!(Tier::Tier3, contract.internal_get_tier(10_000 * token_decimal - 1));
+        assert_eq!(Tier::Tier3, contract.internal_get_tier(5_000 * multiplier));
+        assert_eq!(Tier::Tier3, contract.internal_get_tier(5_000 * multiplier + 1));
+        assert_eq!(Tier::Tier3, contract.internal_get_tier(10_000 * multiplier - 1));
 
         // Tier4
-        assert_eq!(Tier::Tier4, contract.internal_get_tier(10_000 * token_decimal));
-        assert_eq!(Tier::Tier4, contract.internal_get_tier(10_000 * token_decimal + 1));
+        assert_eq!(Tier::Tier4, contract.internal_get_tier(10_000 * multiplier));
+        assert_eq!(Tier::Tier4, contract.internal_get_tier(10_000 * multiplier + 1));
     }
 
     #[test]
