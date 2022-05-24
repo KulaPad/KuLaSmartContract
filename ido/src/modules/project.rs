@@ -322,7 +322,6 @@ impl IDOContract {
     // If project's whitelist type is fixed Xtoken, 
     // need to check user has enough xtoken or not.
     
-
     pub(crate) fn internal_add_account(&mut self, account_id: &AccountId, project_id: ProjectId){
 
         let mut projects_by_account = self.internal_get_projects_by_account_or_default(account_id);
@@ -354,28 +353,20 @@ impl IDOContract {
         };
     }
 
-    pub(crate) fn internal_commit(&mut self,account_id:AccountId, project_id: ProjectId, deposit: U128)-> U128{       
-        let buy_amount = self.internal_sale_commit(project_id,&account_id,deposit.0);    
-        env::log(format!("Total buyed: {}",buy_amount ).as_bytes());
-
-        U128(deposit.0 - buy_amount)
-    }
-
     // Project Sale
-    pub(crate) fn internal_sale_commit(&mut self, project_id: ProjectId,account_id: &AccountId, amount: Balance) -> Balance{
-        
+    pub(crate) fn internal_commit(&mut self, project_id: ProjectId, account_id: &AccountId, amount: Balance) -> Balance{
         
         let project = self.internal_get_project_or_panic(project_id);                         
                 
-    
+        assert!(self.is_whitelist(project_id,account_id.to_string()),"Account does not register whitelisting this project");
         project.assert_sale_period();
-        assert!(self.is_whitelist(project_id,account_id.to_string()),"Account do not register whitelisting this project");
                   
         match project.sale_type {
             SaleType::Shared { 
                 min_allocation_per_user, 
-                max_allocation_per_user} => {
-                    self.internal_sale_commit_shared_project(min_allocation_per_user, 
+                max_allocation_per_user
+            } => {
+                    self.internal_commit_shared_project(min_allocation_per_user, 
                                                                     max_allocation_per_user,
                                                                     project_id,
                                                                     account_id,
@@ -385,7 +376,7 @@ impl IDOContract {
                 allocation_per_ticket, 
                 total_tickets, 
                 win_ticket_ids } => {
-                    self.internal_sale_commit_lottery_project(allocation_per_ticket,
+                    self.internal_commit_lottery_project(allocation_per_ticket,
                                                             total_tickets,
                                                             win_ticket_ids,
                                                             project_id,
@@ -396,7 +387,7 @@ impl IDOContract {
         }
     }
     
-    pub(crate) fn internal_sale_commit_shared_project(&mut self,
+    pub(crate) fn internal_commit_shared_project(&mut self,
         min_allocation: u128, 
         max_allocation: u128,
         project_id: ProjectId, 
@@ -437,7 +428,7 @@ impl IDOContract {
     }
     
     
-    pub(crate) fn internal_sale_commit_lottery_project(&mut self,
+    pub(crate) fn internal_commit_lottery_project(&mut self,
         allocation_per_ticket: u128,
         total_tickets: u64,
         project_ticket_win_ids: Option<Vec<u64>>,

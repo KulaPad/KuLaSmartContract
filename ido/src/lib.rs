@@ -258,8 +258,8 @@ impl IDOContract {
         let deposit_amount = env::attached_deposit();
         let account_id = env::signer_account_id();
         if project.fund_contract_id == ""{
-            let change = self.internal_commit(account_id.clone(), project_id, U128(deposit_amount));
-            Promise::new(account_id).transfer(change.0);
+            let committed = self.internal_commit(project_id, &account_id, deposit_amount);
+            Promise::new(account_id).transfer(deposit_amount - committed);
         } else {
             Promise::new(account_id).transfer(deposit_amount);
             env::log(b"Incorrect fund_contract_id");

@@ -107,10 +107,7 @@ impl IDOContract {
         
         claim_amount 
     }
-}
 
-#[near_bindgen]
-impl  IDOContract {
     pub fn ft_on_transfer(&mut self,sender_id: AccountId,amount: U128,msg: String)-> PromiseOrValue<U128>{
         let args: Vec<&str> = msg.split(":").collect();
         if args.len() >= 1 {
@@ -121,8 +118,8 @@ impl  IDOContract {
                     let fund_contract_id = env::predecessor_account_id();
                     if project.fund_contract_id == fund_contract_id{ 
                         env::log(format!("Ft on transfer success: project_id={},sender_id={},amount={},fund_contract_id={}", project_id, sender_id, amount.0,env::predecessor_account_id()).as_bytes());
-                        let change = self.internal_commit(sender_id, project_id,amount);
-                        return PromiseOrValue::Value(change);
+                        let committed = self.internal_commit(project_id, &sender_id, amount.0);
+                        return PromiseOrValue::Value(U128(amount.0 - committed));
                     } else {
                         env::log(b"Transfer Error: fund_contract_id not match. Transfer back deposited token to signer");
                         return PromiseOrValue::Value(amount);
