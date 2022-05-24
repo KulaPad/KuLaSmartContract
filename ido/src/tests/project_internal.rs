@@ -14,7 +14,7 @@ impl IDOContract{
             token_raised_amount: U128(1000000000000000),
             token_sale_rate_numberator: 10u64,
             token_sale_rate_denominator: 1u64,
-            fund_contract_id: "".to_string(),
+            fund_contract_id: "ft_contract".to_string(),
             whitelist_type: WhitelistType::None,
             sale_type : SaleType::Shared{
                 min_allocation_per_user: 10,
@@ -37,11 +37,12 @@ impl IDOContract{
             token_raised_amount: U128(1000000000000000),
             token_sale_rate_numberator: 10u64,
             token_sale_rate_denominator: 1u64,
-            fund_contract_id: "".to_string(),
+            fund_contract_id: "ft_contract".to_string(),
             whitelist_type: WhitelistType::Ticket,
-            sale_type : SaleType::Shared{
-                min_allocation_per_user: 10,
-                max_allocation_per_user: 200
+            sale_type : SaleType::Lottery{
+                allocation_per_ticket : 10,
+                total_tickets: 0,
+                win_ticket_ids: None,
             },
             distribution_type: DistributionType::Unlocked,
 
@@ -60,7 +61,7 @@ impl IDOContract{
             token_raised_amount: U128(1000000000000000),
             token_sale_rate_numberator: 10u64,
             token_sale_rate_denominator: 1u64,
-            fund_contract_id: "".to_string(),
+            fund_contract_id: "ft_contract".to_string(),
             whitelist_type: WhitelistType::XToken(100),
             sale_type : SaleType::Shared{
                 min_allocation_per_user: 10,
@@ -91,41 +92,31 @@ impl IDOContract{
             distribution_type: DistributionType::Unlocked,
         }
     }
+
+    pub(crate) fn internal_new_project_5()-> ProjectInput{
+        ProjectInput{
+            owner_id: "cryptocubes.near".to_string(),
+            whitelist_start_date: 1651172401000000000,
+            whitelist_end_date: 1651604401000000000,
+            sale_start_date: 1651604401000000000,
+            sale_end_date: 1652068717000000000,
+            token_contract_id: "contract.cryptocubes.near".to_string(),
+            token_raised_amount: U128(1000000000000000),
+            token_sale_rate_numberator: 10u64,
+            token_sale_rate_denominator: 1u64,
+            fund_contract_id: "".to_string(),
+            whitelist_type: WhitelistType::Ticket,
+            sale_type : SaleType::Shared{
+                min_allocation_per_user: 20_000_000_000_000_000_000_000_000,
+                max_allocation_per_user: 100_000_000_000_000_000_000_000_000
+            },
+            distribution_type: DistributionType::Unlocked,
+
+        }
+    }
 }
     
-    // pub(crate) fn internal_new_project_4()-> ProjectInfo{
-    //     ProjectInfo{
-    //         owner_id: "cryptocubes.near".to_string(),
-    //         name: " Hunt for the Lost Cryptocubes".to_string(),
-    //         logo_url: "https://pbs.twimg.com/media/FIYR_Z4XoAUf1qs?format=jpg&name=large".to_string(),
-    //         description: "The adventure game where everything is an NFT".to_string(),
-    //         introduction:"Near Metabuild Hackathon Play Hacks Prize Winners top 3".to_string(),
-    //         categories: vec!["GameFi".to_string()],
-    //         whitelist_start_date: 1647316800000000000,
-    //         whitelist_end_date: 1647576000000000000,
-    //         sale_start_date: 1647576000000000000,
-    //         sale_end_date: 1647835200000000000,
-    //         token_contract_id: "contract.cryptocubes.near".to_string(),
-    //         token_symbol:"CUBE".to_string(),
-    //         token_decimal: 8,
-    //         token_amount_per_sale_slot: 100,
-    //         token_raised_amount: 400_000,
-    //         token_sale_rate: Rate::new(1u64, 100u64),
-    //         fund_contract_id: None,
-    //         fund_symbol: "Near".to_string(),
-    //         total_fund_received: 0,
-    //         sale_type: SaleType::FullUnlocked,
-    //         configuration: ProjectConfiguration{ 
-    //             max_staking_tickets_per_user: 500, 
-    //             max_win_tickets_per_user: 250, 
-    //         },
-    //         status:ProjectStatus::Rejected,
-    //         total_allocations: 0,
-    //         total_staking_tickets: 0,
-    //         total_social_tickets: 0,
-    //         total_referral_tickets: 0,
-    //     }
-    // }
+    
 
 
     // pub(crate) fn internal_new_project_5()-> ProjectInfo{

@@ -11,6 +11,7 @@ impl IDOContract{
         self.create_project(Self::internal_new_project_2());
         self.create_project(Self::internal_new_project_3());
         self.create_project(Self::internal_new_project_4());
+        self.create_project(Self::internal_new_project_5());
     }
 
     pub fn create_sample_project(&mut self, project_no: u8) {
@@ -24,7 +25,7 @@ impl IDOContract{
         self.create_project(project);
     }
 
-    pub fn update_project_whitelist_date(&mut self, project_id: ProjectId, new_whitelist_start_date: Option<Timestamp>, new_whitelist_end_date: Option<Timestamp>) {
+    pub fn update_project_whitelist_date(&mut self, project_id: ProjectId, new_whitelist_start_date: Option<U64>, new_whitelist_end_date: Option<U64>) {
         self.assert_test_mode_and_owner();
 
         let mut project = self.projects.get(&project_id).expect("No project found");
@@ -34,8 +35,8 @@ impl IDOContract{
 
         println!("update_project_whitelist_date: current_time: {}, a_half_of_period: {}", current_time, a_half_of_whitelist_period);
 
-        project.whitelist_start_date = new_whitelist_start_date.unwrap_or(current_time - a_half_of_whitelist_period);
-        project.whitelist_end_date = new_whitelist_end_date.unwrap_or(current_time + a_half_of_whitelist_period);
+        project.whitelist_start_date = new_whitelist_start_date.unwrap_or(U64(current_time - a_half_of_whitelist_period)).0;
+        project.whitelist_end_date = new_whitelist_end_date.unwrap_or(U64(current_time + a_half_of_whitelist_period)).0;
 
         self.projects.insert(&project_id, &project);
 
@@ -84,6 +85,13 @@ impl IDOContract{
         project.whitelist_end_date -= time_period_after_sales_end;
         project.sale_start_date -= time_period_after_sales_end;
         project.sale_end_date -= time_period_after_sales_end;
+
+        println!("After change:"); 
+        println!("Whitelist start date: {}", project.whitelist_start_date);
+        println!("Whitelist end date: {}", project.whitelist_end_date);
+        println!("Sales start date: {}", project.sale_start_date);
+        println!("Sales end date: {}", project.sale_end_date);
+        println!("Current time: {}", current_timestamp);
 
         self.projects.insert(&project_id, &project);
     }

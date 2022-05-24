@@ -26,6 +26,6 @@ fn test_is_whitelist(){
     emulator.contract.internal_change_project_status(2);
     emulator.update_context("alice".to_string(), "bob".to_string(), 0);
     emulator.contract.register_whitelist(1);
-    assert!(emulator.contract.is_whitelist(1,None));
-    assert!(!emulator.contract.is_whitelist(1,Some("alice".to_string())));
+    assert!(emulator.contract.is_whitelist(1,"bob".to_string()));
+    assert!(!emulator.contract.is_whitelist(1,"alice".to_string()));
 }

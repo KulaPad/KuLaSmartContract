@@ -6,8 +6,8 @@ use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FT_METADATA_SPEC,
 };
 near_sdk_sim::lazy_static_include::lazy_static_include_bytes! {
-    FT_CONTRACT_WASM_FILE => "res/kulapad_token.wasm",
-    STAKING_CONTRACT_WASM_FILE => "res/kulapad_staking.wasm"
+    FT_CONTRACT_WASM_FILE => "../res/kulapad_token.wasm",
+    STAKING_CONTRACT_WASM_FILE => "../res/kulapad_staking.wasm"
 }
 
 const FT_CONTRACT_ID: &str = "ft_contract";

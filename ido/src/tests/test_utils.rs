@@ -7,7 +7,7 @@ const SECONDS_A_MINUTE: u8 = 60;
 const MINUTES_AN_HOUR: u8 = 60;
 const HOURS_A_DAY: u8 = 24;
 
-fn get_timestamp(days: u16, hours: u8, minutes: u8, seconds: u8) -> Timestamp {
+fn get_timestamp(days: u32, hours: u8, minutes: u8, seconds: u8) -> Timestamp {
     let mut timestamp: Timestamp = 0;
     timestamp = days as u64 * HOURS_A_DAY as u64 + hours as u64;
     timestamp = timestamp * MINUTES_AN_HOUR as u64 + minutes as u64;
@@ -15,11 +15,11 @@ fn get_timestamp(days: u16, hours: u8, minutes: u8, seconds: u8) -> Timestamp {
     timestamp * UNIX_TIME_ONE_SECOND_IN_NANOSECONDS
 }
 
-pub fn increase_timestamp(timestamp: &Timestamp, days: u16, hours: u8, minutes: u8, seconds: u8) -> Timestamp {
+pub fn increase_timestamp(timestamp: &Timestamp, days: u32, hours: u8, minutes: u8, seconds: u8) -> Timestamp {
     timestamp + get_timestamp(days, hours, minutes, seconds)
 }
 
-pub fn decrease_timestamp(timestamp: &Timestamp, days: u16, hours: u8, minutes: u8, seconds: u8) -> Timestamp {
+pub fn decrease_timestamp(timestamp: &Timestamp, days: u32, hours: u8, minutes: u8, seconds: u8) -> Timestamp {
     timestamp - get_timestamp(days, hours, minutes, seconds)
 }
 

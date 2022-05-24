@@ -9,7 +9,7 @@ use crate::tests::test_project::*;
 fn test_get_project_account_info_project_not_exist() { // - Project doesn't exist
     let emulator = Emulator::default();
 
-    emulator.contract.get_project_account_info(1, None);
+    emulator.contract.get_project_account_info(1, bob());
 }
 
 #[test]
@@ -23,7 +23,7 @@ fn test_get_project_account_info_project_exists_account_not() { // - Project exi
 
     emulator.update_context(bob(), bob(), 0);
 
-    let project = emulator.contract.get_project_account_info(1, None);
+    let project = emulator.contract.get_project_account_info(1, bob());
 
     assert_eq!(1, project.project_id);
     assert_eq!(bob(), project.account_id);

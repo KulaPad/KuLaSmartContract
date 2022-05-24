@@ -67,7 +67,7 @@ fn test_happy_case() {
     emulator.set_account_id_and_desposit(account_a(), account_a(), 0);
     emulator.contract.register_whitelist(project_id);
     println!("User A registers whitelist - {}", account_a());
-    assert!(emulator.contract.is_whitelist(project_id, None));
+    assert!(emulator.contract.is_whitelist(project_id, account_a().to_string()));
 
     let projects_in_account = emulator.contract.projects_by_account.get(&account_a()).unwrap();
     let accounts_and_tickets_in_project = emulator.contract.accounts_by_project.get(&project_id).unwrap();
@@ -84,19 +84,19 @@ fn test_happy_case() {
     let account_c = alice();
     emulator.set_account_id_and_desposit(account_c.clone(), account_c.clone(), 0);
     println!("User C registers whitelist - {}", account_c);
-    assert!(!emulator.contract.is_whitelist(project_id, None));
+    assert!(!emulator.contract.is_whitelist(project_id, account_c.to_string()));
 
     // User A stakes & locks Tier1 for 31 days => Cross contract call
 
     // User A updated staking tier => Cross contract call
     let locked_amount: u128 = 200_00000000;
-    let locked_days: u16 = 10;
+    let locked_days: u32 = 10;
     let locked_timestamp: Timestamp = increase_timestamp(&whitelist_start_date, locked_days, 0, 0, 0);
-    let expected_staking_tier = StakingTier::Tier1;
+    let expected_staking_tier = Tier::Tier1;
     let expected_staking_tickets: TicketNumber = 1;
     let expected_allocations: TicketNumber = 0;
 
-    let account_json = get_account_json(&account_a(), locked_amount, locked_timestamp);
+    let account_json = get_account_json(&account_a(), locked_amount, locked_days, locked_timestamp);
 
     emulator.contract.process_update_staking_tickets(project_id, account_a(), account_json);
 

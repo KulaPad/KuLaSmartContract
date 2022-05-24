@@ -1,15 +1,17 @@
-use crate::main::{init};
+use crate::utils::{init};
 use kulapad_ido::staking_contract::AccountJson;
-use near_sdk_sim::{call, view,DEFAULT_GAS, STORAGE_AMOUNT, to_yocto};
-use near_sdk_sim::transaction::{ExecutionStatus};
+use near_sdk::json_types::U128;
+use near_sdk::serde_json::json;
+use near_sdk_sim::{DEFAULT_GAS, to_yocto};
+use near_sdk_sim::transaction::ExecutionStatus;
 
 
 
-const ALICE_DEPOSIT_AMOUNT: &str = "10_000_000_000_000_000_000_000_000_000";
+const ALICE_DEPOSIT_AMOUNT: U128 = U128(10_000_000_000_000_000_000_000_000_000);
 
 #[test]
 pub fn test_deposit_and_stake(){
-    let (root,alice,ido,ft_contract,staking_contract,ido_contract) = init();
+    let (root,alice,_,ft_contract,staking_contract,_) = init();
     // Storage deposit
     alice.call(
         staking_contract.account_id(), 
@@ -22,7 +24,7 @@ pub fn test_deposit_and_stake(){
     // Deposit token
     alice.call(
         ft_contract.account_id(), 
-        "ft_transfer_callback", 
+        "ft_transfer_call", 
         &json!({
             "receiver_id": staking_contract.account_id(),
             "amount": ALICE_DEPOSIT_AMOUNT,
@@ -49,7 +51,7 @@ pub fn test_deposit_and_stake(){
 
 #[test]
 pub fn test_deposit_and_stake_without_storage() {
-    let (root, alice, ft_contract, staking_contract) = init();
+    let (_, alice,_, ft_contract, staking_contract,_) = init();
 
     // Storage deposit
     // alice.call(
@@ -63,7 +65,7 @@ pub fn test_deposit_and_stake_without_storage() {
     // Deposit token
     let outcome = alice.call(
         ft_contract.account_id(), 
-        "ft_transfer_callback", 
+        "ft_transfer_call", 
         &json!({
             "receiver_id": staking_contract.account_id(),
             "amount": ALICE_DEPOSIT_AMOUNT,
@@ -78,7 +80,7 @@ pub fn test_deposit_and_stake_without_storage() {
     // assert error type
     if let ExecutionStatus::Failure(error) = &outcome.promise_errors().remove(0).unwrap().outcome().status {
         println!("Excute error: {}", error.to_string());
-        assert!(error.to_string().contains("ERR_CALL_FAILED"));
+        assert!(error.to_string().contains("ERR_NOT_FOUND_ACCOUNT"));
     } else {
         unreachable!()
     }
