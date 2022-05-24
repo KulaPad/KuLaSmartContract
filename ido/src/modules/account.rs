@@ -1,5 +1,4 @@
 use crate::*;
-use crate::tests::test_project::*;
 
 #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, PartialEq, Debug)]
 pub struct LotteryAccountSaleData {

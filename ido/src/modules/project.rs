@@ -168,10 +168,6 @@ impl Project {
     pub(crate) fn assert_sale_period(&self) {
         assert!(self.is_in_sale_period(), "Project isn't in sale period.");
     }
-
-    pub(crate) fn assert_distribution_period(&self) {
-        assert!(self.is_in_distribution_period(), "Project isn't in distribution period.");
-    }
     
     pub(crate) fn is_in_whitelist_period(&self) -> bool {
         let current_time = get_current_time();
@@ -358,25 +354,15 @@ impl IDOContract {
         };
     }
 
-    pub(crate) fn internal_commit_ft_token(&mut self,account_id:AccountId, project_id: ProjectId, fund_contract_id: AccountId, deposit: U128, memo: String)-> U128{
-        let project = self.internal_get_project_or_panic(project_id);
-        
-        let buy_amount = self.internal_sale_commit(project_id,&account_id,deposit.0,memo);
-            
+    pub(crate) fn internal_commit(&mut self,account_id:AccountId, project_id: ProjectId, deposit: U128)-> U128{       
+        let buy_amount = self.internal_sale_commit(project_id,&account_id,deposit.0);    
         env::log(format!("Total buyed: {}",buy_amount ).as_bytes());
 
-        ext_ft_contract::ft_transfer(
-                    project.fund_contract_id, 
-                    U128(buy_amount), 
-                    Some(format!("Transfer {} from {}",buy_amount,account_id.clone())), 
-                    &fund_contract_id, 
-                    DEPOSIT_ONE_YOCTOR, 
-                    FT_TRANSFER_GAS);
         U128(deposit.0 - buy_amount)
     }
 
     // Project Sale
-    pub(crate) fn internal_sale_commit(&mut self, project_id: ProjectId,account_id: &AccountId, amount: Balance, memo:String) -> Balance{
+    pub(crate) fn internal_sale_commit(&mut self, project_id: ProjectId,account_id: &AccountId, amount: Balance) -> Balance{
         
         
         let project = self.internal_get_project_or_panic(project_id);                         
@@ -405,7 +391,7 @@ impl IDOContract {
                                                             project_id,
                                                             account_id,
                                                             amount,
-                                                            memo)
+                                                            )
                 }
         }
     }
@@ -458,7 +444,6 @@ impl IDOContract {
         project_id: ProjectId, 
         account_id: &AccountId,
         deposit: u128,
-        memo: String
     ) -> Balance{
             let mut tickets_by_project = self.internal_get_tickets_by_project_or_panic(project_id);
             let mut project_account_unordered_map = self.internal_get_accounts_by_project_or_panic(project_id);
@@ -487,24 +472,6 @@ impl IDOContract {
                         let mut ticket_ids = ticket_ids.clone();
                         assert!(tickets_num>0, "Must deposit at least {} for exchange a ticket",allocation_per_ticket);
                         assert!((tickets_num as u64 + deposit_tickets)<=eligible_tickets,"Eligible tickets not enough");
-    
-                        if deposit > (tickets_num * allocation_per_ticket){
-                            //  Transfer back change deposit
-                            if memo == "near".to_string() {
-                                Promise::new(account_id.clone()).transfer(deposit - tickets_num * allocation_per_ticket);
-                            } else if memo == "ft_token".to_string() {
-                                let transfer_back = deposit - tickets_num * allocation_per_ticket;
-                                ext_ft_contract::ft_transfer(
-                                    project.fund_contract_id.clone(), 
-                                    U128(transfer_back), 
-                                    Some(format!("Transfer back {} change deposit",transfer_back)), 
-                                    &project.fund_contract_id, 
-                                    DEPOSIT_ONE_YOCTOR, 
-                                    FT_TRANSFER_GAS);
-                            } else {
-                                panic!("Incorrect memo");
-                            }
-                        };
     
                         for i in total_tickets..(total_tickets+ tickets_num as u64) {
                             ticket_ids.push(i);

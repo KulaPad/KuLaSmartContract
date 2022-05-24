@@ -121,28 +121,16 @@ impl  IDOContract {
                     let fund_contract_id = env::predecessor_account_id();
                     if project.fund_contract_id == fund_contract_id{ 
                         env::log(format!("Ft on transfer success: project_id={},sender_id={},amount={},fund_contract_id={}", project_id, sender_id, amount.0,env::predecessor_account_id()).as_bytes());
-                        let change = self.internal_commit_ft_token(sender_id, project_id, fund_contract_id,amount,"ft_token".to_string());
+                        let change = self.internal_commit(sender_id, project_id,amount);
                         return PromiseOrValue::Value(change);
                     } else {
-                        ext_ft_contract::ft_transfer(
-                            sender_id,
-                            amount,
-                            Some("Transfer Error: fund_contract_id not match. Transfer back deposited token to signer".to_string()),
-                            &fund_contract_id,
-                            DEPOSIT_ONE_YOCTOR,
-                            FT_TRANSFER_GAS
-                        );
+                        env::log(b"Transfer Error: fund_contract_id not match. Transfer back deposited token to signer");
+                        return PromiseOrValue::Value(amount);
                     }
                 },
                 _ => {
-                    ext_ft_contract::ft_transfer(
-                        sender_id,
-                        amount,
-                        Some("Transfer Error: Unknown message sent".to_string()),
-                        &env::predecessor_account_id(),
-                        DEPOSIT_ONE_YOCTOR,
-                        FT_TRANSFER_GAS
-                    );
+                    env::log(b"Transfer Error: Unknown message sent");
+                    return PromiseOrValue::Value(amount);
                 }
             }
         }

@@ -258,10 +258,11 @@ impl IDOContract {
         let deposit_amount = env::attached_deposit();
         let account_id = env::signer_account_id();
         if project.fund_contract_id == ""{
-            self.internal_sale_commit(project_id, &account_id, deposit_amount,"near".to_string());
+            let change = self.internal_commit(account_id.clone(), project_id, U128(deposit_amount));
+            Promise::new(account_id).transfer(change.0);
         } else {
             Promise::new(account_id).transfer(deposit_amount);
-            panic!("Incorrect fund_contract_id");
+            env::log(b"Incorrect fund_contract_id");
         }   
     }
     /// get UserTierJson: tier, point, ticket, alloc
